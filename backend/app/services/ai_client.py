@@ -66,18 +66,42 @@ class AIClient:
     - Google Gemini (GEMINI_API_KEY)
     - OpenAI-compatible endpoints (OPENAI_API_KEY + OPENAI_BASE_URL)
 
-    Priority: Gemini > OpenAI-compatible > no AI
+    Provider selection:
+    - Set AI_PROVIDER=gemini or AI_PROVIDER=openai to force a specific provider
+    - If not set, auto-detects based on available API keys (Gemini > OpenAI)
     """
 
     @staticmethod
     def get_active_provider():
-        """Return active provider and config."""
-        # Check Gemini key
+        """Return active provider and config based on env config."""
+        # Explicit provider selection via env var
+        forced_provider = _get_env_var("AI_PROVIDER")
+        if forced_provider:
+            forced_provider = forced_provider.lower()
+            if forced_provider == "gemini":
+                gemini_key = _get_env_var("GEMINI_API_KEY")
+                if gemini_key:
+                    return "gemini", {"api_key": gemini_key}
+                else:
+                    logger.warning("AI_PROVIDER=gemini set but GEMINI_API_KEY not found")
+            elif forced_provider == "openai":
+                openai_key = _get_env_var("OPENAI_API_KEY")
+                if openai_key:
+                    base_url = _get_env_var("OPENAI_BASE_URL", "https://api.openai.com/v1")
+                    return "openai", {
+                        "api_key": openai_key,
+                        "base_url": base_url.rstrip("/")
+                    }
+                else:
+                    logger.warning("AI_PROVIDER=openai set but OPENAI_API_KEY not found")
+            else:
+                logger.warning(f"Unknown AI_PROVIDER={forced_provider}, falling back to auto-detect")
+
+        # Auto-detect: Gemini > OpenAI
         gemini_key = _get_env_var("GEMINI_API_KEY")
         if gemini_key:
             return "gemini", {"api_key": gemini_key}
 
-        # Check OpenAI-compatible key
         openai_key = _get_env_var("OPENAI_API_KEY")
         if openai_key:
             base_url = _get_env_var("OPENAI_BASE_URL", "https://api.openai.com/v1")
@@ -93,11 +117,11 @@ def _call_gemini(prompt: str, model: str = "gemini-1.5-flash") -> tuple[str, boo
     """Call Google Gemini API. Returns (text, success)."""
     try:
         import google.generativeai as genai
-        gemini_config = AIClient.get_active_provider()[1]
-        if not gemini_config:
+        gemini_key = _get_env_var("GEMINI_API_KEY")
+        if not gemini_key:
             raise AIRequestError(401, "No GEMINI_API_KEY found in environment")
 
-        genai.configure(api_key=gemini_config["api_key"])
+        genai.configure(api_key=gemini_key)
         model_obj = genai.GenerativeModel(model)
         response = model_obj.generate_content(prompt)
         return response.text if hasattr(response, "text") else str(response), True
@@ -111,13 +135,14 @@ def _call_openai(prompt: str, model: str = "gpt-3.5-turbo") -> tuple[str, bool]:
     """Call OpenAI-compatible API. Returns (text, success)."""
     try:
         from openai import OpenAI
-        openai_config = AIClient.get_active_provider()[1]
-        if not openai_config:
+        openai_key = _get_env_var("OPENAI_API_KEY")
+        if not openai_key:
             raise AIRequestError(401, "No OPENAI_API_KEY found in environment")
 
+        base_url = _get_env_var("OPENAI_BASE_URL", "https://api.openai.com/v1")
         client = OpenAI(
-            api_key=openai_config["api_key"],
-            base_url=openai_config["base_url"]
+            api_key=openai_key,
+            base_url=base_url.rstrip("/")
         )
         response = client.chat.completions.create(
             model=model,
@@ -133,44 +158,32 @@ def _call_openai(prompt: str, model: str = "gpt-3.5-turbo") -> tuple[str, bool]:
 
 def call_ai(prompt: str, model: Optional[str] = None, provider: Optional[str] = None) -> tuple[str, bool]:
     """
-    Call AI with automatic provider selection.
+    Call AI with configurable provider selection.
 
     Args:
         prompt: The prompt to send
         model: Optional model name (auto-selected if not provided)
-        provider: Optional 'gemini' or 'openai' to force provider
+        provider: Optional 'gemini' or 'openai' to force provider (overrides AI_PROVIDER env)
 
     Returns:
         (response_text, success)
     """
-    active_provider, config = AIClient.get_active_provider()
-
-    if not active_provider:
-        logger.warning("No AI provider configured (set GEMINI_API_KEY or OPENAI_API_KEY)")
-        raise AIRequestError(401, "No AI provider configured")
-
-    # Use specified provider or auto-detect
+    # Provider priority: explicit param > AI_PROVIDER env > auto-detect
     if provider:
-        active_provider = provider
-        if provider == "gemini" and config:
-            pass  # Use gemini config
-        elif provider == "openai" and config:
-            pass  # Use openai config
-        else:
-            # Re-fetch specific provider config
-            gemini_key = _get_env_var("GEMINI_API_KEY")
-            openai_key = _get_env_var("OPENAI_API_KEY")
-            if provider == "gemini" and not gemini_key:
-                raise AIRequestError(401, "GEMINI_API_KEY not found")
-            elif provider == "openai" and not openai_key:
-                raise AIRequestError(401, "OPENAI_API_KEY not found")
+        active_provider = provider.lower()
+    else:
+        active_provider, _ = AIClient.get_active_provider()
+        if not active_provider:
+            logger.warning("No AI provider configured (set GEMINI_API_KEY or OPENAI_API_KEY)")
+            raise AIRequestError(401, "No AI provider configured")
 
     # Select default model based on provider
     if model is None:
         if active_provider == "gemini":
-            model = "gemini-1.5-flash"
+            # Allow override via env
+            model = _get_env_var("GEMINI_MODEL", "gemini-1.5-flash")
         else:
-            model = "gpt-3.5-turbo"
+            model = _get_env_var("OPENAI_MODEL", "gpt-3.5-turbo")
 
     try:
         if active_provider == "gemini":
