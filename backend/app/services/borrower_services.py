@@ -299,6 +299,12 @@ def _is_gemini_rate_limit_error(exc: Exception) -> bool:
     return "429" in message and ("quota" in message or "rate limit" in message)
 
 
+def _is_gemini_access_denied(exc: Exception) -> bool:
+    """Check if the error is a 403/access denied from Gemini API."""
+    message = str(exc or "").lower()
+    return "403" in message or "access" in message or "denied" in message or "permission" in message
+
+
 def _extract_retry_delay_seconds(exc: Exception, default_seconds: float = 20.0) -> float:
     message = str(exc or "")
 
@@ -676,7 +682,10 @@ def _build_score_reasons_with_gemini(base_reasons_payload, prediction_data, api_
     except Exception as exc:
         if _is_gemini_rate_limit_error(exc):
             _set_gemini_rate_limit_backoff(exc)
-        logger.warning("Gemini reason synthesis failed, using fallback reasons: %s", exc)
+        if _is_gemini_access_denied(exc):
+            logger.warning("Gemini API access denied (403) — ensure Generative Language API is enabled in Google Cloud Console and API key has access. Using fallback reasons.")
+        else:
+            logger.warning("Gemini reason synthesis failed, using fallback reasons: %s", exc)
         return None
 
 
@@ -740,7 +749,10 @@ def _simplify_lime_rules_with_gemini(rules, prediction_data, api_key: str):
     except Exception as exc:
         if _is_gemini_rate_limit_error(exc):
             _set_gemini_rate_limit_backoff(exc)
-        logger.warning("Gemini LIME simplification failed: %s", exc)
+        if _is_gemini_access_denied(exc):
+            logger.warning("Gemini API access denied (403) — ensure Generative Language API is enabled in Google Cloud Console and API key has access. LIME simplification skipped.")
+        else:
+            logger.warning("Gemini LIME simplification failed: %s", exc)
         return []
 
 

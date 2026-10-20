@@ -187,10 +187,22 @@ The backend expects these Supabase (Postgres) tables to exist: `users`, `borrowe
 |----------|----------|-------------|
 | `SUPABASE_URL` | yes | Project URL from Supabase dashboard |
 | `SUPABASE_SERVICE_ROLE_KEY` | yes | Service-role key (bypasses RLS) |
-| `GEMINI_API_KEY` | no | AI advice via Gemini 3.8 Flash |
+| `GEMINI_API_KEY` | no | AI advice via Gemini 3.8 Flash (requires Generative Language API enabled in Google Cloud Console) |
 | `DB_HOST` / `DB_PORT` / `DB_USER` / `DB_PASSWORD` / `DB_NAME` | no | Optional local Postgres override |
 | `API_TIMEOUT` | no | Request timeout seconds (default 30) |
 | `DEBUG` | no | Enable debug logging (default false) |
+
+### Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| `python` command not found | Use `python3` (macOS/Linux) or ensure `.venv/bin` is activated |
+| Port 8000 or 5173 already in use | `python scripts/bootstrap_and_run.py --backend-port 9000 --frontend-port 5174` |
+| M1/M2 Mac compilation errors | `ARCHFLAGS=-Qunused-arguments CPPFLAGS=-QunusedArguments python scripts/bootstrap_and_run.py` |
+| Model artifacts missing | Add `--train-missing-models` flag or run training scripts manually |
+| Frontend not loading | Ensure `.env` exists at repo root with `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` |
+| **Gemini API returns 403 / "access denied"** | Enable **Generative Language API** in Google Cloud Console → APIs & Services. Verify the API key has access. The app falls back to deterministic advice automatically. |
+| **Gemini API returns 429 / rate limit** | Built-in backoff retries automatically. Check quota in Google Cloud Console. |
 
 ## Project Layout
 

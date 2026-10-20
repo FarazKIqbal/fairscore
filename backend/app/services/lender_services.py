@@ -11,6 +11,12 @@ from app.services.borrower_services import get_shap_explanation, get_score_reaso
 logger = logging.getLogger(__name__)
 
 
+def _is_gemini_access_denied(exc: Exception) -> bool:
+    """Check if the error is a 403/access denied from Gemini API."""
+    message = str(exc or "").lower()
+    return "403" in message or "access" in message or "denied" in message or "permission" in message
+
+
 def _extract_json_object(text: str):
     if not isinstance(text, str):
         return {}
@@ -119,7 +125,10 @@ def _generate_lender_review_advice_with_gemini(lender_context, borrower_context,
             "improvementTips": normalized_tips,
         }
     except Exception as exc:
-        logger.warning("Gemini lender review generation failed: %s", exc)
+        if _is_gemini_access_denied(exc):
+            logger.warning("Gemini API access denied (403) — ensure Generative Language API is enabled in Google Cloud Console and API key has access. Lender review falls back to deterministic advice.")
+        else:
+            logger.warning("Gemini lender review generation failed: %s", exc)
         return None
 
 
