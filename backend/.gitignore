@@ -1,5 +1,15 @@
 # Environment variables
 .env
+*.env
+
+# API keys and secrets
+*.key
+*.pem
+*api_key*
+*api-key*
+*service_role*
+*credential*
+additional gemini key
 
 # Python
 __pycache__/
