@@ -144,22 +144,9 @@ Or let the launcher handle it: `python scripts/bootstrap_and_run.py --train-miss
 
 ## How It Works
 
-```
-Borrower profile (10 features)
-        ↓
-  SafeLabelEncoder + StandardScaler
-        ↓
-  ┌─────────────┬─────────────┬──────────────────┐
-  │ Random      │ LightGBM    │ TabTransformer   │
-  │ Forest      │             │ (PyTorch)         │
-  └─────────────┴─────────────┴──────────────────┘
-        ↓
-  Linear Regression meta-learner  →  credit score (300–900)
-        ↓
-  SHAP (global) + LIME (local)  →  merged reasons
-        ↓
-  Gemini rewrite  →  borrower-facing advice
-```
+<p align="center">
+  <img src="credit_scoring_pipeline.svg" alt="Credit scoring pipeline" width="680">
+</p>
 
 The meta-learner's weights are the interesting part: Random Forest carries **+3.66**, LightGBM **−2.66**, TabTransformer **+0.0007**. LightGBM's negative weight means it is not averaging — it is correcting Random Forest's systematic errors.
 
