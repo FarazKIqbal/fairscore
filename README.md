@@ -20,7 +20,7 @@
 [![NumPy](https://img.shields.io/badge/NumPy-2.3-013243.svg)](https://numpy.org/)
 [![imbalanced-learn](https://img.shields.io/badge/imbalanced--learn-0.14-8C564B.svg)](https://imbalanced-learn.org/)
 [![Docker](https://img.shields.io/badge/Docker-optional-2496ED.svg)](https://www.docker.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![License](https://img.shields.io/badge/License-See%20repository%20license-blue.svg)](./LICENSE)
 
 ---
 
@@ -78,9 +78,8 @@ py -3.11 -m venv .venv && .\.venv\Scripts\Activate.ps1   # Windows
 # python3 -m venv .venv && source .venv/bin/activate      # macOS / Linux
 
 # 2. Configure Supabase credentials
-#    The backend reads .env from backend/, not the repo root
-cp .env.example backend/.env
-# Edit backend/.env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and optionally GEMINI_API_KEY
+cp .env.example .env
+# Edit .env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and optionally GEMINI_API_KEY
 
 # 3. Launch backend + frontend
 python scripts/bootstrap_and_run.py
@@ -90,7 +89,7 @@ The launcher installs missing dependencies, checks for model artifacts, and star
 
 | Service | URL |
 |---------|-----|
-| Frontend | http://localhost:5173 |
+| Frontend | http://localhost:5173 (or 8080 per `vite.config.ts`) |
 | Backend API | http://localhost:8000 |
 | Interactive API docs | http://localhost:8000/docs |
 
@@ -251,7 +250,7 @@ The `backend/models/` directory contains detailed technical documentation:
 
 ## License
 
-[MIT](./LICENSE) © 2026 Faraz Karukappadath Iqbal
+No license file is present in the repository. Licensing is **unresolved** — add a `LICENSE` file (e.g., MIT, Apache-2.0) before publishing if you intend open-source distribution.
 
 ## About the Author
 
