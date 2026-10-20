@@ -88,7 +88,7 @@ def _generate_lender_review_advice_with_gemini(lender_context, borrower_context,
         import google.generativeai as genai
 
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-2.5-flash")
+        model = genai.GenerativeModel("gemini-3.8-flash")
 
         prompt = (
             "You are a lending risk assistant. Generate a concise review note for a lender evaluating a borrower loan request. "

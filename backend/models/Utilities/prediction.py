@@ -415,7 +415,7 @@ class CreditScorePredictor:
         }
 
     def get_credit_improvement_advice(self, data, shap_explanation=None, api_key=None,
-                                      model_name='gemini-2.5-flash',
+                                      model_name='gemini-3.8-flash',
                                       score_threshold=650, top_k=5):
         """
         Send prediction data and explanations to Gemini and get advice for improving

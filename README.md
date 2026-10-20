@@ -18,7 +18,7 @@
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.11-EE4C2C?logo=pytorch)](https://pytorch.org/)
 [![SHAP](https://img.shields.io/badge/SHAP-0.50-8B5CF6?logo=shap)](https://shap.readthedocs.io/)
 [![LIME](https://img.shields.io/badge/LIME-0.2-9CA3AF)](https://github.com/marcotcr/lime)
-[![Gemini 2.5 Flash](https://img.shields.io/badge/Gemini-2.5_Flash-4285F4?logo=google)](https://ai.google.dev/)
+[![Gemini 3.8 Flash](https://img.shields.io/badge/Gemini-3.8_Flash-4285F4?logo=google)](https://ai.google.dev/)
 [![Pandas](https://img.shields.io/badge/Pandas-3.0-150458?logo=pandas)](https://pandas.pydata.org/)
 [![NumPy](https://img.shields.io/badge/NumPy-2.3-013243?logo=numpy)](https://numpy.org/)
 [![imbalanced-learn](https://img.shields.io/badge/imbalanced--learn-0.14-8C564B)](https://imbalanced-learn.org/)
@@ -96,8 +96,8 @@ The Dockerfile uses a multi-stage build: it compiles the frontend (Vite) in a No
 **Backend**
 ```bash
 cd backend
-pip install -r requirements.txt
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+python -m pip install -r requirements.txt
+python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 **Frontend**
@@ -153,7 +153,7 @@ The meta-learner's weights are the interesting part: Random Forest carries **+3.
 ## What You Get
 
 - **A score with a receipt.** SHAP feature importance and LIME local rules are merged into one ranked list of reasons, each marked as helping or hurting.
-- **Plain-English advice.** Gemini 2.5 Flash rewrites model output into sentences a borrower can act on. Without an API key, the app falls back to deterministic tips — it never hard-fails.
+- **Plain-English advice.** Gemini 3.8 Flash rewrites model output into sentences a borrower can act on. Without an API key, the app falls back to deterministic tips — it never hard-fails.
 - **Two-sided marketplace.** Borrowers browse lenders by type, amount range, and interest rate, then apply. Lenders see pre-scored applicants, the reasons behind each score, and approve or skip in one click.
 - **Graceful degradation.** Unknown categorical values (a state the model never saw) encode as `-1` instead of crashing. Missing Gemini key, rate limits, and unavailable model artifacts all fall back rather than fail.
 
@@ -167,7 +167,7 @@ All routes are prefixed `/api/v1`. Interactive docs at `/docs`.
 | `POST` | `/borrower/details` | Onboard a borrower and compute their first score |
 | `GET` | `/borrower/credit-info` | Score, risk bucket, and estimated credit line |
 | `GET` | `/borrower/score-reasons` | Merged SHAP + LIME reasons, ranked by impact |
-| `GET` | `/borrower/score-advice` | Gemini-written improvement advice |
+| `GET` | `/borrower/score-advice` | Gemini 3.8 Flash improvement advice |
 | `GET` | `/borrower/score-insights` | Reasons and advice in one call |
 | `GET` | `/borrower/lender-info` | Available lenders with rates and amount ranges |
 | `POST` | `/borrower/apply` | Apply to a lender |
@@ -187,7 +187,7 @@ The backend expects these Supabase (Postgres) tables to exist: `users`, `borrowe
 |----------|----------|-------------|
 | `SUPABASE_URL` | yes | Project URL from Supabase dashboard |
 | `SUPABASE_SERVICE_ROLE_KEY` | yes | Service-role key (bypasses RLS) |
-| `GEMINI_API_KEY` | no | AI advice via Gemini 2.5 Flash |
+| `GEMINI_API_KEY` | no | AI advice via Gemini 3.8 Flash |
 | `DB_HOST` / `DB_PORT` / `DB_USER` / `DB_PASSWORD` / `DB_NAME` | no | Optional local Postgres override |
 | `API_TIMEOUT` | no | Request timeout seconds (default 30) |
 | `DEBUG` | no | Enable debug logging (default false) |
@@ -234,6 +234,7 @@ The frontend calls `http://localhost:8000/api/v1` with the URL hardcoded in `fro
 | Issue | Solution |
 |-------|----------|
 | `python` command not found | Use `python3` (macOS/Linux) or ensure `.venv/bin` is activated |
+| `Failed to canonicalize script path` from `pip` on Windows | Use `python -m pip` with the active interpreter, for example `..\\.venv\\Scripts\\python.exe -m pip install -r requirements.txt` from `backend` |
 | Port 8000 or 5173 already in use | `python scripts/bootstrap_and_run.py --backend-port 9000 --frontend-port 5174` |
 | M1/M2 Mac compilation errors | `ARCHFLAGS=-Qunused-arguments CPPFLAGS=-QunusedArguments python scripts/bootstrap_and_run.py` |
 | Model artifacts missing | Add `--train-missing-models` flag or run training scripts manually |

@@ -599,7 +599,7 @@ def _build_score_reasons_with_gemini(base_reasons_payload, prediction_data, api_
         import google.generativeai as genai
 
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-2.5-flash")
+        model = genai.GenerativeModel("gemini-3.8-flash")
 
         base_overview = str(base_reasons_payload.get("overview") or "").strip()
         base_reasons = base_reasons_payload.get("combinedReasons") or []
@@ -688,7 +688,7 @@ def _simplify_lime_rules_with_gemini(rules, prediction_data, api_key: str):
         import google.generativeai as genai
 
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-2.5-flash")
+        model = genai.GenerativeModel("gemini-3.8-flash")
 
         prompt_payload = []
         for index, rule in enumerate(rules):
