@@ -602,10 +602,7 @@ def _build_score_reasons_with_gemini(base_reasons_payload, prediction_data, api_
         return None
 
     try:
-        import google.generativeai as genai
-
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-3.8-flash")
+        from app.services.ai_client import call_ai, AIRequestError
 
         base_overview = str(base_reasons_payload.get("overview") or "").strip()
         base_reasons = base_reasons_payload.get("combinedReasons") or []
@@ -624,8 +621,10 @@ def _build_score_reasons_with_gemini(base_reasons_payload, prediction_data, api_
             f"Base reasons: {base_reasons}"
         )
 
-        response = model.generate_content(prompt)
-        response_text = response.text if hasattr(response, "text") else str(response)
+        response_text, success = call_ai(prompt)
+        if not success:
+            return None
+
         parsed = _extract_json_object(response_text)
         if not parsed:
             return None
@@ -679,13 +678,14 @@ def _build_score_reasons_with_gemini(base_reasons_payload, prediction_data, api_
             "overview": overview,
             "combinedReasons": cleaned_reasons[:6],
         }
-    except Exception as exc:
-        if _is_gemini_rate_limit_error(exc):
-            _set_gemini_rate_limit_backoff(exc)
+    except AIRequestError as exc:
         if _is_gemini_access_denied(exc):
-            logger.warning("Gemini API access denied (403) — ensure Generative Language API is enabled in Google Cloud Console and API key has access. Using fallback reasons.")
+            logger.warning("AI provider access denied (%s) — ensure API key is valid. Using fallback reasons.", exc.status_code or "unknown")
         else:
-            logger.warning("Gemini reason synthesis failed, using fallback reasons: %s", exc)
+            logger.warning("AI reason synthesis failed: %s", exc)
+        return None
+    except Exception as exc:
+        logger.warning("Gemini reason synthesis failed, using fallback reasons: %s", exc)
         return None
 
 
@@ -694,10 +694,7 @@ def _simplify_lime_rules_with_gemini(rules, prediction_data, api_key: str):
         return []
 
     try:
-        import google.generativeai as genai
-
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-3.8-flash")
+        from app.services.ai_client import call_ai, AIRequestError
 
         prompt_payload = []
         for index, rule in enumerate(rules):
@@ -721,8 +718,10 @@ def _simplify_lime_rules_with_gemini(rules, prediction_data, api_key: str):
             f"Rules: {prompt_payload}"
         )
 
-        response = model.generate_content(prompt)
-        response_text = response.text if hasattr(response, "text") else str(response)
+        response_text, success = call_ai(prompt)
+        if not success:
+            return []
+
         parsed = _extract_json_array(response_text)
         if not parsed:
             return []
@@ -746,13 +745,14 @@ def _simplify_lime_rules_with_gemini(rules, prediction_data, api_key: str):
             })
 
         return normalized
-    except Exception as exc:
-        if _is_gemini_rate_limit_error(exc):
-            _set_gemini_rate_limit_backoff(exc)
+    except AIRequestError as exc:
         if _is_gemini_access_denied(exc):
-            logger.warning("Gemini API access denied (403) — ensure Generative Language API is enabled in Google Cloud Console and API key has access. LIME simplification skipped.")
+            logger.warning("AI provider access denied (%s) — LIME simplification skipped.", exc.status_code or "unknown")
         else:
-            logger.warning("Gemini LIME simplification failed: %s", exc)
+            logger.warning("AI LIME simplification failed: %s", exc)
+        return []
+    except Exception as exc:
+        logger.warning("Gemini LIME simplification failed: %s", exc)
         return []
 
 

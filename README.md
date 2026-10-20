@@ -18,7 +18,8 @@
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.11-EE4C2C?logo=pytorch)](https://pytorch.org/)
 [![SHAP](https://img.shields.io/badge/SHAP-0.50-8B5CF6?logo=shap)](https://shap.readthedocs.io/)
 [![LIME](https://img.shields.io/badge/LIME-0.2-9CA3AF)](https://github.com/marcotcr/lime)
-[![Gemini 3.8 Flash](https://img.shields.io/badge/Gemini-3.8_Flash-4285F4?logo=google)](https://ai.google.dev/)
+[![Gemini 1.5 Flash](https://img.shields.io/badge/Gemini-1.5_Flash-4285F4?logo=google)](https://ai.google.dev/)
+[![OpenAI Compatible](https://img.shields.io/badge/OpenAI-Compatible-00A67E?logo=openai)](https://platform.openai.com/)
 [![Pandas](https://img.shields.io/badge/Pandas-3.0-150458?logo=pandas)](https://pandas.pydata.org/)
 [![NumPy](https://img.shields.io/badge/NumPy-2.3-013243?logo=numpy)](https://numpy.org/)
 [![imbalanced-learn](https://img.shields.io/badge/imbalanced--learn-0.14-8C564B)](https://imbalanced-learn.org/)
@@ -188,7 +189,7 @@ All routes are prefixed `/api/v1`. Interactive docs at `/docs`.
 | `POST` | `/borrower/details` | Onboard a borrower and compute their first score |
 | `GET` | `/borrower/credit-info` | Score, risk bucket, and estimated credit line |
 | `GET` | `/borrower/score-reasons` | Merged SHAP + LIME reasons, ranked by impact |
-| `GET` | `/borrower/score-advice` | Gemini 3.8 Flash improvement advice |
+| `GET` | `/borrower/score-advice` | AI improvement advice (Gemini or OpenAI-compatible) |
 | `GET` | `/borrower/score-insights` | Reasons and advice in one call |
 | `GET` | `/borrower/lender-info` | Available lenders with rates and amount ranges |
 | `POST` | `/borrower/apply` | Apply to a lender |
@@ -208,10 +209,15 @@ The backend expects these Supabase (Postgres) tables to exist: `users`, `borrowe
 |----------|----------|-------------|
 | `SUPABASE_URL` | yes | Project URL from Supabase dashboard |
 | `SUPABASE_SERVICE_ROLE_KEY` | yes | Service-role key (bypasses RLS) |
-| `GEMINI_API_KEY` | no | AI advice via Gemini 3.8 Flash (requires Generative Language API enabled in Google Cloud Console) |
+| `GEMINI_API_KEY` | no | Google Gemini API key (free tier: gemini-1.5-flash) |
+| `OPENAI_API_KEY` | no | OpenAI-compatible API key (e.g., OpenAI, Azure, local LLM) |
+| `OPENAI_BASE_URL` | no | Base URL for OpenAI-compatible endpoint (default: https://api.openai.com/v1) |
+| `OPENAI_MODEL` | no | Model name for OpenAI-compatible provider (default: gpt-3.5-turbo) |
 | `DB_HOST` / `DB_PORT` / `DB_USER` / `DB_PASSWORD` / `DB_NAME` | no | Optional local Postgres override |
 | `API_TIMEOUT` | no | Request timeout seconds (default 30) |
 | `DEBUG` | no | Enable debug logging (default false) |
+
+**Priority:** If both `GEMINI_API_KEY` and `OPENAI_API_KEY` are set, Gemini is used first. If it fails (403/rate limit), the app falls back to deterministic tips — it does not auto-failover to the other provider.
 
 ### Troubleshooting
 
@@ -224,6 +230,7 @@ The backend expects these Supabase (Postgres) tables to exist: `users`, `borrowe
 | Frontend not loading | Ensure `.env` exists at repo root with `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` |
 | **Gemini API returns 403 / "access denied"** | Enable **Generative Language API** in Google Cloud Console → APIs & Services. Verify the API key has access. The app falls back to deterministic advice automatically. |
 | **Gemini API returns 429 / rate limit** | Built-in backoff retries automatically. Check quota in Google Cloud Console. |
+| **OpenAI-compatible API issues** | Verify `OPENAI_API_KEY`, `OPENAI_BASE_URL`, and `OPENAI_MODEL` are correct. Test with a simple curl to the endpoint. |
 
 ## Project Layout
 

@@ -91,10 +91,7 @@ def _generate_lender_review_advice_with_gemini(lender_context, borrower_context,
         return None
 
     try:
-        import google.generativeai as genai
-
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-3.8-flash")
+        from app.services.ai_client import call_ai, AIRequestError
 
         prompt = (
             "You are a lending risk assistant. Generate a concise review note for a lender evaluating a borrower loan request. "
@@ -108,8 +105,10 @@ def _generate_lender_review_advice_with_gemini(lender_context, borrower_context,
             f"Score reasons: {reasons_payload}"
         )
 
-        response = model.generate_content(prompt)
-        response_text = response.text if hasattr(response, "text") else str(response)
+        response_text, success = call_ai(prompt)
+        if not success:
+            return None
+
         parsed = _extract_json_object(response_text)
         if not parsed:
             return None
@@ -124,11 +123,14 @@ def _generate_lender_review_advice_with_gemini(lender_context, borrower_context,
             "advice": advice,
             "improvementTips": normalized_tips,
         }
-    except Exception as exc:
+    except AIRequestError as exc:
         if _is_gemini_access_denied(exc):
-            logger.warning("Gemini API access denied (403) — ensure Generative Language API is enabled in Google Cloud Console and API key has access. Lender review falls back to deterministic advice.")
+            logger.warning("AI provider access denied (%s) — lender review falls back to deterministic advice.", exc.status_code or "unknown")
         else:
-            logger.warning("Gemini lender review generation failed: %s", exc)
+            logger.warning("AI lender review generation failed: %s", exc)
+        return None
+    except Exception as exc:
+        logger.warning("Gemini lender review generation failed: %s", exc)
         return None
 
 

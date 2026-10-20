@@ -13,7 +13,10 @@ import numpy as np
 import os
 import sys
 import warnings
+import logging
 warnings.filterwarnings('ignore')
+
+logger = logging.getLogger(__name__)
 
 # Add parent directory to path to import inference module
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -415,11 +418,13 @@ class CreditScorePredictor:
         }
 
     def get_credit_improvement_advice(self, data, shap_explanation=None, api_key=None,
-                                      model_name='gemini-3.8-flash',
+                                      model_name='gemini-1.5-flash',
                                       score_threshold=650, top_k=5):
         """
-        Send prediction data and explanations to Gemini and get advice for improving
+        Send prediction data and explanations to AI and get advice for improving
         credit score when the prediction is below a threshold.
+
+        Uses AI client which supports Google Gemini and OpenAI-compatible endpoints.
 
         Parameters:
         -----------
@@ -428,9 +433,9 @@ class CreditScorePredictor:
         shap_explanation : dict, optional
             Precomputed SHAP explanation dict from explain_prediction_shap
         api_key : str
-            Google Generative AI API key
+            AI API key (Gemini or OpenAI-compatible)
         model_name : str, default='gemini-1.5-flash'
-            Gemini model name
+            Model name (auto-selected based on provider if not specified)
         score_threshold : int, default=650
             Threshold below which advice is requested
         top_k : int, default=5
@@ -441,7 +446,7 @@ class CreditScorePredictor:
         dict : Advice response
         """
         if not api_key:
-            raise ValueError("api_key is required to call Gemini")
+            raise ValueError("api_key is required to call AI provider")
 
         df = self._validate_input(data)
         prediction = self.ensemble.predict(df)[0]
@@ -479,10 +484,7 @@ class CreditScorePredictor:
                 "Prioritize the most actionable steps and reference the negative SHAP factors."
             )
 
-        import google.generativeai as genai
-
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel(model_name)
+        from app.services.ai_client import call_ai, AIRequestError
 
         prompt = (
             "You are a credit risk advisor. Given the prediction and SHAP factors, "
@@ -494,10 +496,21 @@ class CreditScorePredictor:
             f"Top positive factors: {payload['top_positive_factors']}\n"
         )
 
-        response = model.generate_content(prompt)
+        try:
+            response_text, success = call_ai(prompt, model=model_name)
+            if not success:
+                raise AIRequestError(500, "AI call failed")
+        except AIRequestError as exc:
+            logger.warning("AI advice generation failed: %s", exc)
+            return {
+                'prediction': float(prediction),
+                'advice': "AI advice unavailable. Consider reducing existing loans, lowering LTV ratio, or improving income stability.",
+                'payload_sent': payload
+            }
+
         return {
             'prediction': float(prediction),
-            'advice': response.text if hasattr(response, 'text') else str(response),
+            'advice': response_text,
             'payload_sent': payload
         }
     
