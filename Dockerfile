@@ -24,28 +24,22 @@ RUN useradd --create-home --shell /bin/bash appuser
 
 WORKDIR /app
 
-# Copy Python requirements first for better caching
+# Install Python dependencies (use layer caching)
 COPY requirements.txt backend/requirements.txt ./
+RUN python -m venv /opt/venv && \
+    /opt/venv/bin/pip install --no-cache-dir --upgrade pip && \
+    /opt/venv/bin/pip install --no-cache-dir -r requirements.txt && \
+    /opt/venv/bin/pip install --no-cache-dir -r backend/requirements.txt
 
-# Create and activate virtual environment
-RUN python -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-
-# Install Python dependencies
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt && \
-    pip install --no-cache-dir -r backend/requirements.txt
-
-# Copy backend source
+# Copy backend source after deps installed (better cache invalidation)
 COPY backend/ ./backend/
+COPY scripts/ ./scripts/
+COPY requirements.txt ./
 
-# Copy built frontend assets
+# Copy built frontend assets from builder stage
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
-# Copy scripts
-COPY scripts/ ./scripts/
-
-# Create necessary directories and set permissions
+# Create necessary directories
 RUN mkdir -p /app/backend/dataset /app/backend/models && \
     chown -R appuser:appuser /app
 
@@ -54,5 +48,9 @@ USER appuser
 # Expose ports
 EXPOSE 8000 5173
 
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD ["/opt/venv/bin/python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"] || exit 1
+
 # Command to run both services
-CMD ["python", "scripts/bootstrap_and_run.py", "--backend-host", "0.0.0.0", "--frontend-host", "0.0.0.0"]
+CMD ["/opt/venv/bin/python", "scripts/bootstrap_and_run.py", "--backend-host", "0.0.0.0", "--frontend-host", "0.0.0.0"]

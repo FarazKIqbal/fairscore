@@ -83,13 +83,34 @@ Press **Ctrl+C** once to stop both.
 ### Docker (alternative)
 
 ```bash
+# Quick start with all services (backend + frontend + postgres)
 docker compose up --build
-# Or without Compose:
-docker build -t fairscore .
-docker run -p 8000:8000 -p 5173:5173 --env-file .env fairscore
+
+# Run in detached mode
+docker compose up -d
+
+# Stop all services
+docker compose down
 ```
 
-The Dockerfile uses a multi-stage build: it compiles the frontend (Vite) in a Node stage, then copies only the built assets into the Python production image. A `.dockerignore` excludes `.venv/`, `node_modules/`, `*.joblib`, `*.pth`, and other local artifacts for fast, clean builds.
+The `docker-compose.yml` now includes:
+- **PostgreSQL** service for local development
+- **Health checks** to ensure database is ready before app starts
+- **Volume persistence** for database data
+- **Network isolation** for security
+
+```bash
+# Rebuild after code changes
+docker compose up --build
+
+# View logs
+docker compose logs -f
+
+# Clean up volumes (resets database)
+docker compose down -v
+```
+
+The Dockerfile uses a multi-stage build: it compiles the frontend (Vite) in a Node stage, then copies only built assets into the Python production image. A `.dockerignore` excludes `.venv/`, `node_modules/`, `*.joblib`, `*.pth`, and other local artifacts for fast, clean builds.
 
 ### Manual setup (without bootstrap)
 

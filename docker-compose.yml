@@ -11,20 +11,45 @@ services:
     env_file:
       - .env
     environment:
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=fairscore
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
+    networks:
+      - fairscore-network
 
-  # Optional: Add a PostgreSQL service if needed for local testing
-  # postgres:
-  #   image: postgres:15
-  #   environment:
-  #     POSTGRES_DB: fairscore
-  #     POSTGRES_USER: postgres
-  #     POSTGRES_PASSWORD: postgres
-  #   ports:
-  #     - "5432:5432"
-  #   volumes:
-  #     - postgres_data:/var/lib/postgresql/data
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: fairscore
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d fairscore"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - fairscore-network
 
-# volumes:
-#   postgres_data:
+networks:
+  fairscore-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
