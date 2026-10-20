@@ -252,9 +252,8 @@ The frontend calls `http://localhost:8000/api/v1` with the URL hardcoded in `fro
 
 ## License
 
-No license file is present in the repository. Licensing is **unresolved** — add a `LICENSE` file (e.g., MIT, Apache-2.0) before publishing if you intend open-source distribution.
+[MIT](LICENSE) © 2026 FairScore team
 
 ## About the Author
 
-Built by **FarazKIqbal**.  
-GitHub: [@FarazKIqbal](https://github.com/FarazKIqbal)
+Built by the FairScore team — [FarazKIqbal](https://github.com/FarazKIqbal) and contributors.
