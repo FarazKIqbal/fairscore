@@ -2,18 +2,17 @@ version: '3.8'
 
 services:
   fairscore:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
       - "5173:5173"
+    env_file:
+      - .env
     environment:
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
-    volumes:
-      - ./backend/app:/app/backend/app
-      - ./frontend/src:/app/frontend/src
-    stdin_open: true
-    tty: true
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    restart: unless-stopped
 
   # Optional: Add a PostgreSQL service if needed for local testing
   # postgres:
@@ -24,3 +23,8 @@ services:
   #     POSTGRES_PASSWORD: postgres
   #   ports:
   #     - "5432:5432"
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+
+# volumes:
+#   postgres_data:

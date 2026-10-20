@@ -89,6 +89,8 @@ docker build -t fairscore .
 docker run -p 8000:8000 -p 5173:5173 --env-file .env fairscore
 ```
 
+The Dockerfile uses a multi-stage build: it compiles the frontend (Vite) in a Node stage, then copies only the built assets into the Python production image. A `.dockerignore` excludes `.venv/`, `node_modules/`, `*.joblib`, `*.pth`, and other local artifacts for fast, clean builds.
+
 ### Manual setup (without bootstrap)
 
 **Backend**
