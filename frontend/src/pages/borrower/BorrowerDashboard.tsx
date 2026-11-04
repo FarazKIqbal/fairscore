@@ -27,12 +27,90 @@ type AdviceBlock = {
 };
 
 const cleanAdviceText = (text: string) => {
-    return String(text || '')
+    const lines = String(text || '')
         .replace(/\r/g, '')
-        .replace(/\*\*([^*]+)\*\*/g, '$1')
-        .replace(/\*([^*]+)\*/g, '$1')
-        .replace(/[ \t]+/g, ' ')
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean);
+
+    return lines
+        .map((line) => {
+            const cleaned = line
+                .replace(/^#{1,6}\s*/, '')
+                .replace(/\*\*([^*]+)\*\*/g, '$1')
+                .replace(/\*([^*]+)\*/g, '$1')
+                .replace(/[ \t]+/g, ' ')
+                .trim();
+
+            if (!cleaned.startsWith('|') || !cleaned.endsWith('|')) {
+                return cleaned;
+            }
+
+            const cells = cleaned
+                .slice(1, -1)
+                .split('|')
+                .map((cell) => cell.trim());
+
+            if (cells.every((cell) => /^:?-{2,}:?$/.test(cell))) {
+                return '';
+            }
+
+            if (cells[0]?.toLowerCase() === 'priority') {
+                return 'Action plan:';
+            }
+
+            const [priority, action, why, tips] = cells;
+            if (priority && action) {
+                return `${priority}. ${action} — ${why || ''}${tips ? ` Tip: ${tips}` : ''}`.trim();
+            }
+
+            return cells.join(' — ');
+        })
+        .filter(Boolean)
+        .join('\n\n')
         .trim();
+};
+
+type ParsedAdvice = {
+    summary: string;
+    actions: Array<{ title: string; body: string }>;
+    note: string;
+};
+
+const parseAdvice = (rawText: string): ParsedAdvice => {
+    const text = cleanAdviceText(rawText).replace(/\n+/g, ' ').trim();
+    const firstAction = text.search(/\b1\.\s+/);
+    const beforeActions = firstAction >= 0 ? text.slice(0, firstAction).trim() : text;
+    const noteIndex = text.search(/\s+Note:\s+/i);
+    const actionsText = firstAction >= 0
+        ? text.slice(firstAction, noteIndex >= 0 ? noteIndex : text.length)
+        : '';
+    const note = noteIndex >= 0 ? text.slice(noteIndex).trim() : '';
+
+    const actions: Array<{ title: string; body: string }> = [];
+    const actionPattern = /(\d+)\.\s+(.+?)(?=\s+\d+\.\s+|$)/g;
+    let match: RegExpExecArray | null;
+    while ((match = actionPattern.exec(actionsText)) !== null) {
+        const content = match[2].trim();
+        const [tableTitle, ...tableBody] = content.split(/\s+—\s+/);
+        const titleMatch = content.match(/^(.+?)(?=\s+Your\s+)/);
+        const title = tableBody.length
+            ? tableTitle.trim()
+            : titleMatch?.[1]?.trim() || `Priority ${match[1]}`;
+        const body = tableBody.length
+            ? tableBody.join(' — ').trim()
+            : titleMatch ? content.slice(titleMatch[0].length).trim() : content;
+        actions.push({ title, body });
+    }
+
+    return {
+        summary: beforeActions
+            .replace(/^Action Plan To Improve Your Score\s*/i, '')
+            .replace(/^Action plan:\s*/i, '')
+            .trim(),
+        actions,
+        note,
+    };
 };
 
 const looksLikeActionSentence = (sentence: string) => {
@@ -162,6 +240,7 @@ const BorrowerDashboard = () => {
     const [geminiAdvice, setGeminiAdvice] = useState<GeminiAdvice | null>(null);
     const [explanationLoading, setExplanationLoading] = useState(true);
     const [explanationErrors, setExplanationErrors] = useState<string[]>([]);
+    const hasAiAdvice = Boolean(geminiAdvice?.source && geminiAdvice.source !== 'fallback');
 
     useEffect(() => {
         const fetchCreditInfo = async () => {
@@ -225,18 +304,18 @@ const BorrowerDashboard = () => {
             </div>
 
             {error && (
-                <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive-foreground">
                     {error}
                 </div>
             )}
 
             {/* Summary Cards */}
             <div className="grid gap-4 md:grid-cols-3">
-                {/* Credit Score */}
-                <Card>
+                {/* Credit Score - Primary accent card */}
+                <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Credit Score</CardTitle>
-                        <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                        <CardTitle className="text-sm font-medium text-primary">Credit Score</CardTitle>
+                        <TrendingUp className="h-4 w-4 text-primary" />
                     </CardHeader>
                     <CardContent>
                         {loading ? (
@@ -252,11 +331,11 @@ const BorrowerDashboard = () => {
                     </CardContent>
                 </Card>
 
-                {/* Risk Level */}
-                <Card>
+                {/* Risk Level - Danger/warning accent card */}
+                <Card className="bg-gradient-to-br from-destructive/5 to-destructive/10 border-destructive/20">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Risk Level</CardTitle>
-                        <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+                        <CardTitle className="text-sm font-medium text-destructive">Risk Level</CardTitle>
+                        <ShieldCheck className="h-4 w-4 text-destructive" />
                     </CardHeader>
                     <CardContent>
                         {loading ? (
@@ -272,11 +351,11 @@ const BorrowerDashboard = () => {
                     </CardContent>
                 </Card>
 
-                {/* Estimated Credit Line */}
-                <Card>
+                {/* Estimated Credit Line - Secondary accent card */}
+                <Card className="bg-gradient-to-br from-secondary/5 to-secondary/10 border-secondary/20">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Estimated Credit Line</CardTitle>
-                        <Wallet className="h-4 w-4 text-muted-foreground" />
+                        <CardTitle className="text-sm font-medium text-secondary">Estimated Credit Line</CardTitle>
+                        <Wallet className="h-4 w-4 text-secondary" />
                     </CardHeader>
                     <CardContent>
                         {loading ? (
@@ -293,33 +372,33 @@ const BorrowerDashboard = () => {
                 </Card>
             </div>
 
-            {/* Explanations */}
-            <Card>
+            {/* Explanations - Vibrant themed card */}
+            <Card className="border-primary/20 bg-primary/5">
                 <CardHeader className="flex flex-row items-center gap-2">
                     <Info className="h-5 w-5 text-primary" />
                     <CardTitle>What does this mean?</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4 text-sm text-muted-foreground">
+                <CardContent className="space-y-4 text-sm">
                     <div>
-                        <span className="font-semibold text-foreground">Credit Score</span> — A numerical representation of your creditworthiness based on
+                        <span className="font-semibold text-primary">Credit Score</span> — A numerical representation of your creditworthiness based on
                         your financial history, employment, and existing obligations. Scores above 750 are excellent.
                     </div>
                     <div>
-                        <span className="font-semibold text-foreground">Risk Level</span> — Indicates how risky a lender may consider your profile.
+                        <span className="font-semibold text-primary">Risk Level</span> — Indicates how risky a lender may consider your profile.
                         <span className="text-green-600 font-medium"> Low</span> means highly trustworthy,
                         <span className="text-yellow-600 font-medium"> Medium</span> means average risk, and
                         <span className="text-red-600 font-medium"> High</span> means the profile needs improvement.
                     </div>
                     <div>
-                        <span className="font-semibold text-foreground">Estimated Credit Line</span> — The approximate maximum loan amount you can be eligible for,
+                        <span className="font-semibold text-primary">Estimated Credit Line</span> — The approximate maximum loan amount you can be eligible for,
                         based on your credit score, income, and existing financial commitments.
                     </div>
                 </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border-secondary/20 bg-secondary/5">
                 <CardHeader className="flex flex-row items-center gap-2">
-                    <Sparkles className="h-5 w-5 text-primary" />
+                    <Sparkles className="h-5 w-5 text-secondary" />
                     <CardTitle>Score Reasons And Improvement Advice</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -352,11 +431,6 @@ const BorrowerDashboard = () => {
                                             <div className="rounded-lg border border-indigo-200 bg-indigo-50/70 p-4 text-sm text-indigo-900 space-y-2">
                                                 <div className="flex items-center justify-between gap-3">
                                                     <p className="font-semibold">Combined score explanation</p>
-                                                    {scoreReasons?.source ? (
-                                                        <span className="text-[11px] uppercase tracking-wide px-2 py-1 rounded-full bg-white/80 border border-indigo-200 text-indigo-700">
-                                                            {scoreReasons.source === 'gemini' ? 'Gemini generated' : 'Fallback generated'}
-                                                        </span>
-                                                    ) : null}
                                                 </div>
                                                 <p>{scoreReasons.overview || 'These reasons combine broad model influence and your profile-specific patterns.'}</p>
                                             </div>
@@ -410,12 +484,12 @@ const BorrowerDashboard = () => {
                                                         </div>
                                                         <div>
                                                             <h3 className="font-bold text-base">
-                                                                {geminiAdvice.source === 'gemini'
+                                                                {hasAiAdvice
                                                                     ? 'AI-Powered Credit Improvement Strategy'
                                                                     : 'Personalized Credit Improvement Strategy'}
                                                             </h3>
                                                             <p className="text-xs text-blue-100 mt-0.5">
-                                                                {geminiAdvice.source === 'gemini'
+                                                                {hasAiAdvice
                                                                     ? 'Powered by generative AI'
                                                                     : 'Based on your profile analysis'}
                                                             </p>
@@ -425,44 +499,41 @@ const BorrowerDashboard = () => {
 
                                                 <div className="px-5 py-5 space-y-4">
                                                     {(() => {
-                                                        const blocks = splitAdviceBlocks(geminiAdvice.advice || '');
-                                                        if (!blocks.length) {
-                                                            return (
-                                                                <p className="text-sm text-slate-700 leading-relaxed">
-                                                                    {cleanAdviceText(geminiAdvice.advice || 'No advice available right now.')}
-                                                                </p>
-                                                            );
-                                                        }
-
+                                                        const parsedAdvice = parseAdvice(geminiAdvice.advice || '');
                                                         return (
-                                                            <div className="space-y-3">
-                                                                {blocks.map((block, idx) => (
-                                                                    <div key={`advice-block-${idx}`} className="rounded-lg border border-blue-100 bg-blue-50/30 p-4">
-                                                                        <div className="flex gap-3">
-                                                                            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center text-sm font-bold">
-                                                                                {idx + 1}
-                                                                            </div>
-                                                                            <div className="flex-grow">
-                                                                                <h4 className="font-semibold text-sm text-blue-900 mb-1">
-                                                                                    {block.title}
-                                                                                </h4>
-                                                                                <div className="space-y-2 text-sm text-slate-700 leading-relaxed">
-                                                                                    <div>
-                                                                                        <p className="text-[11px] uppercase tracking-wide text-blue-700 font-semibold">What to do</p>
-                                                                                        <p>{block.action}</p>
+                                                            <>
+                                                                {parsedAdvice.summary ? (
+                                                                    <div className="rounded-lg border border-blue-100 bg-blue-50/60 p-4 text-sm leading-relaxed text-slate-700">
+                                                                        {parsedAdvice.summary}
+                                                                    </div>
+                                                                ) : null}
+                                                                {parsedAdvice.actions.length ? (
+                                                                    <div className="space-y-3">
+                                                                        {parsedAdvice.actions.map((action, index) => (
+                                                                            <div key={`ai-action-${index}`} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                                                                                <div className="flex items-start gap-3">
+                                                                                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white">
+                                                                                        {index + 1}
                                                                                     </div>
-                                                                                    {block.rationale ? (
-                                                                                        <div>
-                                                                                            <p className="text-[11px] uppercase tracking-wide text-blue-700 font-semibold">Why it helps</p>
-                                                                                            <p>{block.rationale}</p>
-                                                                                        </div>
-                                                                                    ) : null}
+                                                                                    <div className="min-w-0">
+                                                                                        <h4 className="font-semibold text-blue-900">{action.title}</h4>
+                                                                                        <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">{action.body}</p>
+                                                                                    </div>
                                                                                 </div>
                                                                             </div>
-                                                                        </div>
+                                                                        ))}
                                                                     </div>
-                                                                ))}
-                                                            </div>
+                                                                ) : (
+                                                                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700">
+                                                                        {cleanAdviceText(geminiAdvice.advice || 'No advice available right now.')}
+                                                                    </p>
+                                                                )}
+                                                                {parsedAdvice.note ? (
+                                                                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-relaxed text-amber-900">
+                                                                        {parsedAdvice.note}
+                                                                    </div>
+                                                                ) : null}
+                                                            </>
                                                         );
                                                     })()}
                                                 </div>

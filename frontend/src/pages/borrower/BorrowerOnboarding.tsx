@@ -249,7 +249,7 @@ const BorrowerOnboarding = () => {
             const isCompleted = index < currentStep;
             return (
               <div key={index} className="flex items-center">
-                <div className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium transition-all ${
+                <div className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium transition-colors ${
                   isActive ? 'bg-primary text-primary-foreground' :
                   isCompleted ? 'bg-primary/20 text-primary' :
                   'bg-muted text-muted-foreground'
@@ -287,6 +287,8 @@ const BorrowerOnboarding = () => {
                   <Input
                     id="dob"
                     type="date"
+                    inputMode="none"
+                    autoComplete="bday"
                     required
                     value={dob}
                     onChange={(e) => setDob(e.target.value)}
@@ -341,6 +343,8 @@ const BorrowerOnboarding = () => {
                   <Input
                     id="phone"
                     type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
                     placeholder="10-digit phone number"
                     maxLength={10}
                     required
@@ -383,6 +387,10 @@ const BorrowerOnboarding = () => {
                     <Label htmlFor="customOccupation">Specify Occupation</Label>
                     <Input
                       id="customOccupation"
+                      type="text"
+                      inputMode="text"
+                      autoComplete="occupation"
+                      spellCheck={false}
                       placeholder="Enter your occupation"
                       required
                       value={customOccupation}
@@ -396,6 +404,8 @@ const BorrowerOnboarding = () => {
                   <Input
                     id="income"
                     type="number"
+                    inputMode="decimal"
+                    autoComplete="salary"
                     placeholder="e.g. 50000"
                     min={1}
                     required
@@ -546,7 +556,7 @@ const BorrowerOnboarding = () => {
               </Button>
             ) : (
               <Button onClick={handleSubmit} disabled={isSubmitting}>
-                {isSubmitting ? 'Submitting...' : 'Submit Details'}
+                {isSubmitting ? 'Submitting…' : 'Submit Details'}
               </Button>
             )}
           </CardFooter>

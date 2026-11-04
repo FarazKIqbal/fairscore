@@ -11,7 +11,6 @@ import {
     BarChart3,
     Lock,
     Globe,
-    Star,
     ChevronRight,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -48,21 +47,19 @@ const Landing = () => {
             <section className="relative py-24 lg:py-36">
                 {/* Background decoration */}
                 <div className="absolute inset-0 -z-10">
-                    <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-primary/5 rounded-full blur-3xl" />
-                    <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-primary/3 rounded-full blur-3xl" />
+                    <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-secondary/10 rounded-full blur-3xl" />
+                    <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-secondary/5 rounded-full blur-3xl" />
                 </div>
 
                 <div className="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
-                    <Badge variant="outline" className="mb-6 px-4 py-1.5 text-sm font-medium border-primary/30 text-primary">
+                    <Badge variant="outline" className="mb-6 px-4 py-1.5 text-sm font-medium border-secondary/30 text-secondary">
                         <Zap className="h-3.5 w-3.5 mr-1.5" />
                         AI-Powered Credit Assessment
                     </Badge>
 
                     <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl max-w-4xl mx-auto leading-[1.1]">
                         Fair and Transparent{' '}
-                        <span className="bg-gradient-to-r from-primary via-primary/80 to-primary/60 bg-clip-text text-transparent">
-                            Credit Scoring
-                        </span>{' '}
+                        <span className="text-secondary-accent font-bold">Credit Scoring</span>{' '}
                         for Everyone
                     </h1>
 
@@ -122,40 +119,40 @@ const Landing = () => {
                                 icon: ShieldCheck,
                                 title: 'AI-Powered Analysis',
                                 description: 'Advanced ensemble models analyse diverse data points — income, credit history, assets — to generate a fair, unbiased credit score.',
-                                color: 'text-blue-600 bg-blue-50',
+                                color: 'text-primary bg-primary/10',
                             },
                             {
                                 icon: TrendingUp,
                                 title: 'Explainable Results',
                                 description: 'Understand exactly why you got your score. SHAP-based explanations break down every factor so nothing feels like a black box.',
-                                color: 'text-green-600 bg-green-50',
+                                color: 'text-secondary bg-secondary/10',
                             },
                             {
                                 icon: Users,
                                 title: 'Peer-to-Peer Lending',
                                 description: 'Skip the middleman. Connect directly with individual lenders and financial institutions looking for borrowers like you.',
-                                color: 'text-purple-600 bg-purple-50',
+                                color: 'text-tertiary bg-tertiary/10',
                             },
                             {
                                 icon: Lock,
                                 title: 'Secure & Private',
                                 description: 'Your data is encrypted end-to-end. We never share personal information without explicit consent.',
-                                color: 'text-orange-600 bg-orange-50',
+                                color: 'text-primary bg-primary/10',
                             },
                             {
                                 icon: BarChart3,
                                 title: 'Real-Time Scoring',
                                 description: 'Get your credit score instantly. No waiting weeks for bureau reports — our AI processes your profile in seconds.',
-                                color: 'text-rose-600 bg-rose-50',
+                                color: 'text-secondary bg-secondary/10',
                             },
                             {
                                 icon: Globe,
                                 title: 'Pan-India Coverage',
                                 description: 'Available across all states and union territories. Designed for the diverse financial landscape of India.',
-                                color: 'text-teal-600 bg-teal-50',
+                                color: 'text-tertiary bg-tertiary/10',
                             },
                         ].map((feature) => (
-                            <Card key={feature.title} className="group hover:shadow-lg transition-all duration-300 border-border/50">
+                            <Card key={feature.title} className="group hover:shadow-lg [transition-property:box-shadow] duration-300 border-border/50">
                                 <CardContent className="pt-6">
                                     <div className={`h-11 w-11 rounded-xl flex items-center justify-center ${feature.color} mb-4`}>
                                         <feature.icon className="h-5 w-5" />
@@ -217,7 +214,7 @@ const Landing = () => {
                     <div className="grid gap-8 md:grid-cols-2 max-w-5xl mx-auto">
                         {/* Borrowers */}
                         <Card className="overflow-hidden border-border/50">
-                            <div className="h-2 bg-gradient-to-r from-blue-500 to-blue-400" />
+                            <div className="h-2 bg-gradient-to-r from-primary to-secondary" />
                             <CardContent className="pt-8 pb-8">
                                 <h3 className="text-2xl font-bold mb-2">For Borrowers</h3>
                                 <p className="text-muted-foreground mb-6">
@@ -232,7 +229,7 @@ const Landing = () => {
                                         'See exactly which lenders approved you',
                                     ].map((item) => (
                                         <li key={item} className="flex items-start gap-3 text-sm">
-                                            <CheckCircle className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
+                                            <CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" />
                                             <span>{item}</span>
                                         </li>
                                     ))}
@@ -245,7 +242,7 @@ const Landing = () => {
 
                         {/* Lenders */}
                         <Card className="overflow-hidden border-border/50">
-                            <div className="h-2 bg-gradient-to-r from-green-500 to-green-400" />
+                            <div className="h-2 bg-gradient-to-r from-secondary to-tertiary" />
                             <CardContent className="pt-8 pb-8">
                                 <h3 className="text-2xl font-bold mb-2">For Lenders</h3>
                                 <p className="text-muted-foreground mb-6">
@@ -260,7 +257,7 @@ const Landing = () => {
                                         'Full approved borrower profiles with contact info',
                                     ].map((item) => (
                                         <li key={item} className="flex items-start gap-3 text-sm">
-                                            <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                                            <CheckCircle className="h-4 w-4 text-secondary mt-0.5 shrink-0" />
                                             <span>{item}</span>
                                         </li>
                                     ))}
@@ -274,59 +271,11 @@ const Landing = () => {
                 </div>
             </section>
 
-            {/* Testimonials */}
-            <section className="py-24 bg-muted/30">
-                <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="text-center mb-16">
-                        <Badge variant="outline" className="mb-4 text-xs">TESTIMONIALS</Badge>
-                        <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">
-                            Trusted by Thousands
-                        </h2>
-                    </div>
-
-                    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 max-w-5xl mx-auto">
-                        {[
-                            {
-                                name: 'Priya Sharma',
-                                role: 'Borrower, Delhi',
-                                quote: 'I was denied by banks multiple times. FairScore gave me a transparent score and connected me with a lender who approved my education loan in 24 hours.',
-                            },
-                            {
-                                name: 'Rajesh Patel',
-                                role: 'Individual Lender, Ahmedabad',
-                                quote: 'The risk assessment is incredibly detailed. I can review credit scores, income, and LTV ratios before approving — it takes the guesswork out of lending.',
-                            },
-                            {
-                                name: 'Ananya Reddy',
-                                role: 'Borrower, Hyderabad',
-                                quote: 'What I love most is the explainability. I could see exactly which factors affected my score and what I could improve. No other platform does this.',
-                            },
-                        ].map((testimonial) => (
-                            <Card key={testimonial.name} className="border-border/50">
-                                <CardContent className="pt-6">
-                                    <div className="flex gap-1 mb-4">
-                                        {[1, 2, 3, 4, 5].map((s) => (
-                                            <Star key={s} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                                        ))}
-                                    </div>
-                                    <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-                                        "{testimonial.quote}"
-                                    </p>
-                                    <div>
-                                        <p className="font-semibold text-sm">{testimonial.name}</p>
-                                        <p className="text-xs text-muted-foreground">{testimonial.role}</p>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
+            
             {/* CTA Section */}
             <section className="py-24">
                 <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="relative rounded-3xl bg-gradient-to-br from-primary to-primary/80 px-8 py-16 sm:px-16 text-center overflow-hidden">
+                    <div className="relative rounded-3xl bg-gradient-to-br from-primary/90 to-primary/70 px-8 py-16 sm:px-16 text-center overflow-hidden">
                         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.15),transparent_60%)]" />
                         <div className="relative z-10">
                             <h2 className="text-3xl sm:text-4xl font-bold text-primary-foreground tracking-tight">

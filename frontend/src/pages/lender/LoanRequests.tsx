@@ -223,7 +223,7 @@ const LoanRequests = () => {
                                         <ShieldCheck className="h-4 w-4 text-primary" />
                                         Score & Risk Explanation
                                     </h4>
-                                    {explanationLoading && <span className="text-xs text-muted-foreground">Loading analysis...</span>}
+                                    {explanationLoading && <span className="text-xs text-muted-foreground">Loading analysis…</span>}
                                 </div>
 
                                 <div className="space-y-3">
@@ -286,12 +286,6 @@ const LoanRequests = () => {
                                         </div>
                                     ) : geminiAdvice ? (
                                         <div className="rounded-md bg-muted/50 p-3 space-y-2">
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-xs text-muted-foreground">Advice source</span>
-                                                <Badge variant="outline" className="text-xs">
-                                                    {geminiAdvice.source === 'gemini' ? 'Gemini' : 'Fallback'}
-                                                </Badge>
-                                            </div>
                                             <p className="text-sm leading-relaxed whitespace-pre-wrap">{geminiAdvice.advice}</p>
                                             {geminiAdvice.improvementTips?.length > 0 && (
                                                 <div>
@@ -318,14 +312,14 @@ const LoanRequests = () => {
                             disabled={actionLoading !== null}
                         >
                             <SkipForward className="h-4 w-4 mr-1" />
-                            {actionLoading === 'skip' ? 'Skipping...' : 'Skip'}
+                            {actionLoading === 'skip' ? 'Skipping…' : 'Skip'}
                         </Button>
                         <Button
                             onClick={handleApprove}
                             disabled={actionLoading !== null}
                         >
                             <CheckCircle className="h-4 w-4 mr-1" />
-                            {actionLoading === 'approve' ? 'Approving...' : 'Approve'}
+                            {actionLoading === 'approve' ? 'Approving…' : 'Approve'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

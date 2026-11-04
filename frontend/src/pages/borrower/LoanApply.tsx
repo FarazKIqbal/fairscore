@@ -41,6 +41,11 @@ const ApplyLoan = () => {
         setApplyingId(lenderid);
         try {
             await authService.applyToLender(user.id, lenderid);
+            setLenders((prev) =>
+                prev.map((lender) =>
+                    lender.lenderid === lenderid ? { ...lender, applied: true } : lender
+                )
+            );
             toast.success('Application submitted successfully!');
         } catch (err: unknown) {
             const e = err as { response?: { data?: { detail?: string } } };
@@ -132,10 +137,17 @@ const ApplyLoan = () => {
                                                 <Button
                                                     size="sm"
                                                     onClick={() => handleApply(lender.lenderid)}
-                                                    disabled={applyingId === lender.lenderid}
+                                                    disabled={applyingId === lender.lenderid || lender.applied}
+                                                    variant={lender.applied ? 'outline' : 'default'}
                                                 >
-                                                    <Send className="h-4 w-4 mr-1" />
-                                                    {applyingId === lender.lenderid ? 'Applying...' : 'Apply'}
+                                                    {lender.applied ? (
+                                                        'Applied'
+                                                    ) : (
+                                                        <>
+                                                            <Send className="h-4 w-4 mr-1" />
+                                                            {applyingId === lender.lenderid ? 'Applying…' : 'Apply'}
+                                                        </>
+                                                    )}
                                                 </Button>
                                             </TableCell>
                                         </TableRow>

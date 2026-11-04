@@ -195,7 +195,7 @@ const LoanDetails = () => {
                             <X className="h-4 w-4 mr-1" /> Cancel
                         </Button>
                         <Button onClick={handleSave} disabled={saving}>
-                            <Save className="h-4 w-4 mr-1" /> {saving ? 'Saving...' : 'Save Changes'}
+                            <Save className="h-4 w-4 mr-1" /> {saving ? 'Saving…' : 'Save Changes'}
                         </Button>
                     </CardFooter>
                 )}

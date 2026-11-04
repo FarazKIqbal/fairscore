@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from app.schemas.borrower import (
     BorrowerDetailsSchema,
     LoanUpdateSchema,
@@ -25,13 +25,29 @@ from app.services.borrower_services import (
     check_borrower_onboarding,
     ExplanationServiceError,
 )
+from app.main import get_current_user
 
 router = APIRouter(prefix="/borrower", tags=["Borrower"])
 
 
+def verify_borrower_access(userid: str, current_user_id: str = Depends(get_current_user)):
+    """Verify that the requested user_id matches the authenticated user."""
+    if userid != current_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access this resource"
+        )
+    return userid
+
 
 @router.post("/details", status_code=status.HTTP_201_CREATED)
-def borrower_details(data: BorrowerDetailsSchema):
+def borrower_details(data: BorrowerDetailsSchema, current_user_id: str = Depends(get_current_user)):
+    # Verify the userid in the request matches the authenticated user
+    if data.userid != current_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to create borrower details for another user"
+        )
     try:
         return create_borrower_details(data)
     except ValueError as e:
@@ -47,7 +63,7 @@ def borrower_details(data: BorrowerDetailsSchema):
 
 
 @router.get("/credit-info")
-def credit_info(userid: str):
+def credit_info(userid: str = Depends(verify_borrower_access)):
     try:
         return get_credit_info(userid)
     except Exception:
@@ -58,7 +74,7 @@ def credit_info(userid: str):
 
 
 @router.get("/profile-details")
-def profile_details(userid: str):
+def profile_details(userid: str = Depends(verify_borrower_access)):
     try:
         return get_profile_details(userid)
     except Exception:
@@ -69,7 +85,7 @@ def profile_details(userid: str):
 
 
 @router.get("/loan-info")
-def loan_info(userid: str):
+def loan_info(userid: str = Depends(verify_borrower_access)):
     try:
         return get_loan_info(userid)
     except Exception:
@@ -80,7 +96,12 @@ def loan_info(userid: str):
 
 
 @router.put("/loan-update")
-def loan_update(data: LoanUpdateSchema):
+def loan_update(data: LoanUpdateSchema, current_user_id: str = Depends(get_current_user)):
+    if data.userid != current_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to update loan for another user"
+        )
     try:
         return update_loan_info(data)
     except ValueError as e:
@@ -96,7 +117,12 @@ def loan_update(data: LoanUpdateSchema):
 
 
 @router.put("/personal-update")
-def personal_update(data: BorrowerPersonalUpdateSchema):
+def personal_update(data: BorrowerPersonalUpdateSchema, current_user_id: str = Depends(get_current_user)):
+    if data.userid != current_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to update personal info for another user"
+        )
     try:
         return update_personal_info(data)
     except Exception:
@@ -107,7 +133,12 @@ def personal_update(data: BorrowerPersonalUpdateSchema):
 
 
 @router.put("/employment-update")
-def employment_update(data: BorrowerEmploymentUpdateSchema):
+def employment_update(data: BorrowerEmploymentUpdateSchema, current_user_id: str = Depends(get_current_user)):
+    if data.userid != current_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to update employment info for another user"
+        )
     try:
         return update_employment_info(data)
     except Exception:
@@ -118,7 +149,12 @@ def employment_update(data: BorrowerEmploymentUpdateSchema):
 
 
 @router.put("/credit-update")
-def credit_update(data: BorrowerCreditUpdateSchema):
+def credit_update(data: BorrowerCreditUpdateSchema, current_user_id: str = Depends(get_current_user)):
+    if data.userid != current_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to update credit info for another user"
+        )
     try:
         return update_credit_info(data)
     except ValueError as e:
@@ -134,9 +170,9 @@ def credit_update(data: BorrowerCreditUpdateSchema):
 
 
 @router.get("/lender-info")
-def lender_info(userid: str):
+def lender_info(userid: str = Depends(verify_borrower_access)):
     try:
-        lenders = get_lenders()
+        lenders = get_lenders(userid)
         if not lenders:
             return []
         return lenders
@@ -150,7 +186,12 @@ def lender_info(userid: str):
 
 
 @router.post("/apply", status_code=status.HTTP_201_CREATED)
-def apply(data: ApplyLoanSchema):
+def apply(data: ApplyLoanSchema, current_user_id: str = Depends(get_current_user)):
+    if data.userid != current_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to apply for another user"
+        )
     try:
         return apply_to_lender(data.userid, data.lenderid)
     except Exception:
@@ -160,7 +201,7 @@ def apply(data: ApplyLoanSchema):
         )
 
 @router.get("/approved-lenders")
-def approved_lenders(userid: str):
+def approved_lenders(userid: str = Depends(verify_borrower_access)):
     try:
         lenders = get_approved_lenders(userid)
         if not lenders:
@@ -174,7 +215,7 @@ def approved_lenders(userid: str):
 
 
 @router.get("/score-reasons")
-def score_reasons(userid: str):
+def score_reasons(userid: str = Depends(verify_borrower_access)):
     try:
         return get_score_reasons(userid)
     except ExplanationServiceError as e:
@@ -187,7 +228,7 @@ def score_reasons(userid: str):
 
 
 @router.get("/score-advice")
-def score_advice(userid: str):
+def score_advice(userid: str = Depends(verify_borrower_access)):
     try:
         return get_score_advice(userid)
     except ExplanationServiceError as e:
@@ -200,7 +241,7 @@ def score_advice(userid: str):
 
 
 @router.get("/score-insights")
-def score_insights(userid: str):
+def score_insights(userid: str = Depends(verify_borrower_access)):
     try:
         return get_credit_score_insights(userid)
     except ExplanationServiceError as e:

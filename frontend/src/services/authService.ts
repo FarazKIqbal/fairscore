@@ -69,6 +69,7 @@ export interface LenderInfo {
     loanAmountFrom: number;
     loanAmountTo: number;
     Interest: number;
+    applied?: boolean;
 }
 
 export interface ApprovedLender {
@@ -110,7 +111,7 @@ export interface LimeExplanation {
 export interface GeminiAdvice {
     prediction: number;
     advice: string;
-    source: 'gemini' | 'fallback';
+    source: 'gemini' | 'openai' | 'fallback';
     improvementTips: string[];
 }
 
@@ -254,7 +255,8 @@ export const authService = {
         return response.data;
     },
     checkOnboardingStatus: async (userid: string, role: 'borrower' | 'lender'): Promise<{ onboarded: boolean }> => {
-        const response = await api.get(`/${role}/onboarding-status`, { params: { userid } });
+        const parameterName = role === 'lender' ? 'lender_id' : 'userid';
+        const response = await api.get(`/${role}/onboarding-status`, { params: { [parameterName]: userid } });
         return response.data;
     },
     submitBorrowerDetails: async (data: BorrowerDetailsPayload): Promise<Record<string, unknown>> => {
@@ -371,7 +373,7 @@ export const authService = {
 
     // Lender dashboard – get & update details
     getLenderDetails: async (lenderId: string): Promise<LenderDetails> => {
-        const response = await api.get('/lender/details', { params: { lenderId } });
+        const response = await api.get('/lender/details', { params: { lender_id: lenderId } });
         return response.data;
     },
     updateLenderDetails: async (data: LenderDetailsUpdatePayload): Promise<{ status: string }> => {
@@ -380,8 +382,8 @@ export const authService = {
     },
 
     // Loan requests
-    getLoanRequests: async (lenderID: string): Promise<LoanRequestBorrower[]> => {
-        const response = await api.get('/lender/loan-requests', { params: { lenderID } });
+    getLoanRequests: async (lenderId: string): Promise<LoanRequestBorrower[]> => {
+        const response = await api.get('/lender/loan-requests', { params: { lender_id: lenderId } });
         return response.data;
     },
     approveBorrower: async (lenderId: string, userId: string): Promise<{ status: string }> => {
@@ -395,12 +397,12 @@ export const authService = {
 
     // Approved borrowers
     getApprovedBorrowers: async (lenderId: string): Promise<ApprovedBorrower[]> => {
-        const response = await api.get('/lender/approved-borrowers', { params: { lenderId } });
+        const response = await api.get('/lender/approved-borrowers', { params: { lender_id: lenderId } });
         return response.data;
     },
 
     getLenderReviewInsights: async (lenderId: string, borrowerId: string): Promise<LenderReviewInsights> => {
-        const response = await api.get('/lender/review-insights', { params: { lenderId, borrowerId } });
+        const response = await api.get('/lender/review-insights', { params: { lender_id: lenderId, borrower_id: borrowerId } });
         return response.data;
     },
 };

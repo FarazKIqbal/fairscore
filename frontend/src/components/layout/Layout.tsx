@@ -53,7 +53,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                             to={link.href}
                             onClick={() => setIsMobileOpen(false)}
                             className={cn(
-                                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all hover:bg-accent hover:text-accent-foreground",
+                                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
                                 location.pathname === link.href ? "bg-accent/80 text-accent-foreground" : "text-muted-foreground"
                             )}
                         >
@@ -77,7 +77,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                         Profile
                     </Link>
                 )}
-                <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive" onClick={logout}>
+                <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive transition-colors" onClick={logout}>
                     <LogOut className="h-4 w-4" />
                     Logout
                 </Button>
@@ -87,11 +87,11 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
     return (
         <div className="grid min-h-screen w-full lg:grid-cols-[280px_1fr]">
-            <div className="hidden border-r bg-muted/40 lg:sticky lg:top-0 lg:block lg:h-screen">
+            <div className="hidden border-r bg-sidebar-background lg:sticky lg:top-0 lg:block lg:h-screen">
                 <SidebarContent className="h-screen" />
             </div>
             <div className="flex flex-col">
-                <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-6 lg:hidden">
+                <header className="flex h-14 items-center gap-4 border-r border-border bg-card px-6 lg:hidden shadow-sm">
                     <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
                         <SheetTrigger asChild>
                             <Button variant="outline" size="icon" className="shrink-0">

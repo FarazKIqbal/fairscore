@@ -417,8 +417,8 @@ class CreditScorePredictor:
             'prediction': predictions[0]
         }
 
-    def get_credit_improvement_advice(self, data, shap_explanation=None, api_key=None,
-                                      model_name='gemini-1.5-flash',
+    def get_credit_improvement_advice(self, data, shap_explanation=None,
+                                      model_name=None,
                                       score_threshold=650, top_k=5):
         """
         Send prediction data and explanations to AI and get advice for improving
@@ -432,10 +432,10 @@ class CreditScorePredictor:
             Input data to explain
         shap_explanation : dict, optional
             Precomputed SHAP explanation dict from explain_prediction_shap
-        api_key : str
-            AI API key (Gemini or OpenAI-compatible)
-        model_name : str, default='gemini-1.5-flash'
-            Model name (auto-selected based on provider if not specified)
+        model_name : str, optional
+            Model name (auto-selected based on provider if not specified).
+            For Gemini, use format "models/gemini-1.5-flash".
+            For OpenAI-compatible, use model name like "gpt-3.5-turbo".
         score_threshold : int, default=650
             Threshold below which advice is requested
         top_k : int, default=5
@@ -445,9 +445,6 @@ class CreditScorePredictor:
         --------
         dict : Advice response
         """
-        if not api_key:
-            raise ValueError("api_key is required to call AI provider")
-
         df = self._validate_input(data)
         prediction = self.ensemble.predict(df)[0]
 
@@ -496,16 +493,27 @@ class CreditScorePredictor:
             f"Top positive factors: {payload['top_positive_factors']}\n"
         )
 
-        try:
-            response_text, success = call_ai(prompt, model=model_name)
-            if not success:
-                raise AIRequestError(500, "AI call failed")
-        except AIRequestError as exc:
-            logger.warning("AI advice generation failed: %s", exc)
+        response_text = None
+        last_error = None
+        for attempt in range(2):
+            try:
+                response_text, success = call_ai(prompt, model=model_name)
+                if not success or not response_text:
+                    raise AIRequestError(502, "AI provider returned an empty response")
+                break
+            except AIRequestError as exc:
+                last_error = exc
+                if attempt == 0:
+                    logger.warning("AI advice generation failed; retrying once: %s", exc)
+                    continue
+                logger.warning("AI advice generation failed after retry: %s", exc)
+
+        if not response_text:
             return {
                 'prediction': float(prediction),
                 'advice': "AI advice unavailable. Consider reducing existing loans, lowering LTV ratio, or improving income stability.",
-                'payload_sent': payload
+                'payload_sent': payload,
+                'ai_error': str(last_error) if last_error else "Empty AI response",
             }
 
         return {

@@ -1,4 +1,9 @@
 import bcrypt
+import hmac
+import hashlib
+import json
+import os
+from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException, status
 from app.db.supabase import supabase
 
@@ -17,6 +22,63 @@ def verify_password(password: str, hashed: str) -> bool:
 
 
 # -----------------------------
+# Simple token utils (DB-only auth without Supabase Auth)
+# -----------------------------
+_TOKEN_SECRET = os.environ.get("TOKEN_SECRET")
+if not _TOKEN_SECRET:
+    raise RuntimeError(
+        "TOKEN_SECRET environment variable is required. Set it in .env or export it."
+    )
+_TOKEN_TTL_HOURS = 24
+
+def _b64url_encode(data: bytes) -> str:
+    import base64
+    return base64.urlsafe_b64encode(data).rstrip(b"=").decode()
+
+
+def _b64url_decode(data: str) -> bytes:
+    import base64
+    padding = 4 - (len(data) % 4)
+    if padding != 4:
+        data += "=" * padding
+    return base64.urlsafe_b64decode(data)
+
+
+def create_token(userid: str, role: str) -> str:
+    """Create a simple HMAC-signed token (not full JWT, but compatible pattern)."""
+    payload = {
+        "uid": userid,
+        "role": role,
+        "exp": (datetime.now(timezone.utc) + timedelta(hours=_TOKEN_TTL_HOURS)).isoformat(),
+    }
+    body = _b64url_encode(json.dumps(payload, separators=(",", ":")).encode())
+    sig = _b64url_encode(hmac.new(_TOKEN_SECRET.encode(), body.encode(), hashlib.sha256).digest())
+    return f"{body}.{sig}"
+
+
+def verify_token(token: str):
+    """Verify token and return (userid, role) or None."""
+    try:
+        parts = token.split(".")
+        if len(parts) != 2:
+            return None
+        body, sig = parts
+
+        expected_sig = _b64url_encode(hmac.new(_TOKEN_SECRET.encode(), body.encode(), hashlib.sha256).digest())
+        if not hmac.compare_digest(sig, expected_sig):
+            return None
+
+        payload = json.loads(_b64url_decode(body))
+        exp = datetime.fromisoformat(payload["exp"])
+        if datetime.now(timezone.utc) > exp:
+            return None
+
+        return payload["uid"], payload["role"]
+    except Exception:
+        return None
+
+
+# -----------------------------
 # Register
 # -----------------------------
 def register_user(data):
@@ -26,7 +88,7 @@ def register_user(data):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Password must be at least 7 characters long"
         )
-    
+
     email = data.email.lower().strip()
 
     # Check if user exists
@@ -57,11 +119,13 @@ def register_user(data):
         )
 
     user = res.data[0]
+    token = create_token(user["id"], user["role"])
     return {
         "userid": user["id"],
         "name": user["name"],
         "email": user["email"],
-        "role": user["role"]
+        "role": user["role"],
+        "token": token
     }
 
 
@@ -91,9 +155,12 @@ def login_user(data):
             detail="Invalid credentials"
         )
 
+    token = create_token(user["id"], user["role"])
+
     return {
         "userid": user["id"],
         "name": user["name"],
         "email": user["email"],
-        "role": user["role"]
+        "role": user["role"],
+        "token": token
     }

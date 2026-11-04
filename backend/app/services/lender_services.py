@@ -6,38 +6,15 @@ import os
 import re
 
 from app.services.borrower_services import get_shap_explanation, get_score_reasons
+from app.services.ai_client import (
+    call_ai,
+    AIRequestError,
+    _extract_json_object,
+    _is_gemini_access_denied,
+)
 
 
 logger = logging.getLogger(__name__)
-
-
-def _is_gemini_access_denied(exc: Exception) -> bool:
-    """Check if the error is a 403/access denied from Gemini API."""
-    message = str(exc or "").lower()
-    return "403" in message or "access" in message or "denied" in message or "permission" in message
-
-
-def _extract_json_object(text: str):
-    if not isinstance(text, str):
-        return {}
-
-    cleaned = text.strip()
-    if not cleaned:
-        return {}
-
-    if cleaned.startswith("```"):
-        cleaned = cleaned.replace("```json", "").replace("```", "").strip()
-
-    start = cleaned.find("{")
-    end = cleaned.rfind("}")
-    if start == -1 or end == -1 or end <= start:
-        return {}
-
-    try:
-        parsed = json.loads(cleaned[start:end + 1])
-        return parsed if isinstance(parsed, dict) else {}
-    except Exception:
-        return {}
 
 
 def _fallback_lender_review_advice(borrower_name: str, score: float, risk: str, reasons_payload):
@@ -86,12 +63,12 @@ def _normalize_currency_to_inr(text: str):
     return normalized
 
 
-def _generate_lender_review_advice_with_gemini(lender_context, borrower_context, reasons_payload, api_key: str):
-    if not api_key:
-        return None
-
+def _generate_lender_review_advice_with_gemini(lender_context, borrower_context, reasons_payload):
     try:
-        from app.services.ai_client import call_ai, AIRequestError
+        from app.services.ai_client import AIClient
+        active_provider, _ = AIClient.get_active_provider()
+        if not active_provider:
+            return None
 
         prompt = (
             "You are a lending risk assistant. Generate a concise review note for a lender evaluating a borrower loan request. "
@@ -125,12 +102,12 @@ def _generate_lender_review_advice_with_gemini(lender_context, borrower_context,
         }
     except AIRequestError as exc:
         if _is_gemini_access_denied(exc):
-            logger.warning("AI provider access denied (%s) — lender review falls back to deterministic advice.", exc.status_code or "unknown")
+            logger.warning("AI provider access denied (%s) — lender review falls back to deterministic advice.", exc.status_code or exc)
         else:
             logger.warning("AI lender review generation failed: %s", exc)
         return None
     except Exception as exc:
-        logger.warning("Gemini lender review generation failed: %s", exc)
+        logger.warning("AI lender review generation failed: %s", exc)
         return None
 
 
@@ -151,14 +128,14 @@ def validate_lending_limits(capacity: float, loan_amount_from: float, loan_amoun
 
 
 def create_lender_details(data):
-    validate_lending_limits(data.capacity, data.loanAmountFrom, data.loanAmountTo, data.interest)
+    validate_lending_limits(data.capacity, data.loan_amount_from, data.loan_amount_to, data.interest)
 
     supabase.table("lender").upsert({
-        "id": data.lenderId,
+        "id": data.lender_id,
         "type": data.type,
         "capacity": data.capacity,
-        "loan_amount_from": data.loanAmountFrom,
-        "loan_amount_to": data.loanAmountTo,
+        "loan_amount_from": data.loan_amount_from,
+        "loan_amount_to": data.loan_amount_to,
         "interest": data.interest
     }, on_conflict="id").execute()
 
@@ -193,16 +170,16 @@ def get_lender_details(lender_id: str):
 # PUT /lender/details
 # -----------------------------
 def update_lender_details(data):
-    validate_lending_limits(data.capacity, data.loanAmountFrom, data.loanAmountTo, data.interest)
+    validate_lending_limits(data.capacity, data.loan_amount_from, data.loan_amount_to, data.interest)
 
     supabase.table("lender") \
         .update({
             "capacity": data.capacity,
-            "loan_amount_from": data.loanAmountFrom,
-            "loan_amount_to": data.loanAmountTo,
+            "loan_amount_from": data.loan_amount_from,
+            "loan_amount_to": data.loan_amount_to,
             "interest": data.interest
         }) \
-        .eq("id", data.lenderID) \
+        .eq("id", data.lender_id) \
         .execute()
 
     return {"status": "updated"}
@@ -285,22 +262,27 @@ def get_loan_requests(lender_id: str):
 # POST /lender/approve
 # -----------------------------
 def approve_borrower(lender_id: str, borrower_id: str):
-    # Approve this lender's request
-    supabase.table("loan") \
-        .update({"status": "approved"}) \
+    """Approve a pending request and cancel the borrower's other pending requests."""
+    pending = supabase.table("loan") \
+        .select("id") \
         .eq("lender_id", lender_id) \
         .eq("borrower_id", borrower_id) \
         .eq("status", "requested") \
+        .limit(1) \
         .execute()
+    if not pending.data:
+        raise ValueError("No pending request found for this lender and borrower")
 
-    # Cancel ALL other lender requests of this borrower
+    supabase.table("loan") \
+        .update({"status": "approved"}) \
+        .eq("id", pending.data[0]["id"]) \
+        .execute()
     supabase.table("loan") \
         .update({"status": "cancelled"}) \
         .eq("borrower_id", borrower_id) \
         .neq("lender_id", lender_id) \
         .eq("status", "requested") \
         .execute()
-
     return {"status": "approved"}
 
 # -----------------------------
@@ -430,19 +412,17 @@ def get_borrower_review_insights(lender_id: str, borrower_id: str):
         "loanRequest": loan_context,
     }
 
-    api_key = os.getenv("GEMINI_API_KEY", "")
     gemini_payload = _generate_lender_review_advice_with_gemini(
         lender_context=lender_context,
         borrower_context=borrower_context,
         reasons_payload=reasons,
-        api_key=api_key,
     )
 
     if gemini_payload:
         advice = {
             "prediction": score,
             "advice": gemini_payload["advice"],
-            "source": "gemini",
+            "source": "ai",
             "improvementTips": gemini_payload["improvementTips"],
         }
     else:

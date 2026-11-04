@@ -1,8 +1,24 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#1a1a1e" />
+    <style>
+      .skip-link {
+        position: absolute;
+        left: -9999px;
+        top: 0;
+        background: #0EA5E9;
+        color: white;
+        padding: 8px;
+        z-index: 100;
+        text-decoration: none;
+      }
+      .skip-link:focus {
+        left: 0;
+      }
+    </style>
     <title>FairScore - Fair Loan Eligibility Assessment</title>
     <meta name="description" content="Get a transparent and fair assessment of your loan eligibility with FairScore's advanced scoring system." />
     <meta name="author" content="FairScore" />
@@ -16,6 +32,7 @@
   </head>
 
   <body>
+    <a href="#main" class="skip-link">Skip to main content</a>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

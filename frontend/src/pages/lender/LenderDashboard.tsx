@@ -105,15 +105,16 @@ const LenderDashboard = () => {
             </div>
 
             {error && (
-                <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>
+                <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive-foreground">{error}</div>
             )}
 
-            {/* Summary cards (read-only) */}
+            {/* Summary cards (read-only) - Vibrant themed */}
             <div className="grid gap-4 md:grid-cols-2">
-                <Card>
+                {/* Name card - Primary accent */}
+                <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Name</CardTitle>
-                        <User className="h-4 w-4 text-muted-foreground" />
+                        <CardTitle className="text-sm font-medium text-primary">Name</CardTitle>
+                        <User className="h-4 w-4 text-primary" />
                     </CardHeader>
                     <CardContent>
                         {loading ? <Skeleton className="h-8 w-40" /> : (
@@ -121,24 +122,25 @@ const LenderDashboard = () => {
                         )}
                     </CardContent>
                 </Card>
-                <Card>
+                {/* Type card - Secondary accent */}
+                <Card className="bg-gradient-to-br from-secondary/5 to-secondary/10 border-secondary/20">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Type</CardTitle>
-                        <Building2 className="h-4 w-4 text-muted-foreground" />
+                        <CardTitle className="text-sm font-medium text-secondary">Type</CardTitle>
+                        <Building2 className="h-4 w-4 text-secondary" />
                     </CardHeader>
                     <CardContent>
                         {loading ? <Skeleton className="h-8 w-40" /> : (
-                            <Badge variant="outline" className="text-base px-3 py-1">{details?.type ?? '—'}</Badge>
+                            <Badge variant="outline" className="text-base px-3 py-1 border-secondary/50 text-secondary">{details?.type ?? '—'}</Badge>
                         )}
                     </CardContent>
                 </Card>
             </div>
 
-            {/* Editable details card */}
-            <Card>
+            {/* Editable details card - Vibrant themed */}
+            <Card className="border-primary/20 bg-primary/5">
                 <CardHeader>
-                    <CardTitle>Lending Configuration</CardTitle>
-                    <CardDescription>
+                    <CardTitle className="text-primary">Lending Configuration</CardTitle>
+                    <CardDescription className="text-secondary">
                         {editing ? 'Update your lending parameters below.' : 'Your current lending parameters.'}
                     </CardDescription>
                 </CardHeader>
@@ -174,27 +176,30 @@ const LenderDashboard = () => {
                         </>
                     ) : (
                         <div className="grid gap-4 sm:grid-cols-2">
+                            {/* Lending Capacity - Primary accent */}
                             <div className="flex items-start gap-3">
-                                <Wallet className="h-5 w-5 text-muted-foreground mt-0.5" />
+                                <Wallet className="h-5 w-5 text-primary mt-0.5" />
                                 <div>
                                     <p className="text-sm text-muted-foreground">Lending Capacity</p>
-                                    <p className="text-lg font-semibold">₹{(details?.capacity ?? 0).toLocaleString('en-IN')}</p>
+                                    <p className="text-lg font-semibold text-primary">₹{(details?.capacity ?? 0).toLocaleString('en-IN')}</p>
                                 </div>
                             </div>
+                            {/* Loan Range - Secondary accent */}
                             <div className="flex items-start gap-3">
-                                <IndianRupee className="h-5 w-5 text-muted-foreground mt-0.5" />
+                                <IndianRupee className="h-5 w-5 text-secondary mt-0.5" />
                                 <div>
                                     <p className="text-sm text-muted-foreground">Loan Range</p>
-                                    <p className="text-lg font-semibold">
+                                    <p className="text-lg font-semibold text-secondary">
                                         ₹{(details?.loanAmountFrom ?? 0).toLocaleString('en-IN')} – ₹{(details?.loanAmountTo ?? 0).toLocaleString('en-IN')}
                                     </p>
                                 </div>
                             </div>
+                            {/* Interest Rate - Tertiary accent */}
                             <div className="flex items-start gap-3">
-                                <Percent className="h-5 w-5 text-muted-foreground mt-0.5" />
+                                <Percent className="h-5 w-5 text-tertiary mt-0.5" />
                                 <div>
                                     <p className="text-sm text-muted-foreground">Interest Rate</p>
-                                    <p className="text-lg font-semibold">{details?.interest ?? 0}%</p>
+                                    <p className="text-lg font-semibold text-tertiary">{details?.interest ?? 0}%</p>
                                 </div>
                             </div>
                         </div>
@@ -207,7 +212,7 @@ const LenderDashboard = () => {
                             <X className="h-4 w-4 mr-1" /> Cancel
                         </Button>
                         <Button onClick={handleSave} disabled={saving}>
-                            <Save className="h-4 w-4 mr-1" /> {saving ? 'Saving...' : 'Save Changes'}
+                            <Save className="h-4 w-4 mr-1" /> {saving ? 'Saving…' : 'Save Changes'}
                         </Button>
                     </CardFooter>
                 )}

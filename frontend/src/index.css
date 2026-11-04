@@ -4,55 +4,130 @@
 
 @layer base {
   :root {
-    --background: 222 47% 6%;
-    --foreground: 210 40% 98%;
+    color-scheme: light dark;
+    /* Theme: Vibrant dark financial UI — Enhanced triadic complementary palette
+       Primary: Azure #0EA5E9 (200°) - vibrant, tech-forward
+       Secondary: Coral #F97316 (20°) - warm, energetic accent
+       Tertiary: Emerald #10B981 (150°) - growth, success
+       Dark base: Deep charcoal #1A1A1E
+       Vibrant colors that pop against dark background */
+    --background: 225 20% 12%;       /* deep charcoal base - deeper for contrast */
+    --foreground: 220 15% 95%;       /* light gray text */
 
-    --card: 222 47% 9%;
-    --card-foreground: 210 40% 98%;
+    --card: 225 20% 15%;             /* slightly lighter card surfaces */
+    --card-foreground: 220 15% 95%;
 
-    --popover: 222 47% 11%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 225 20% 18%;
+    --popover-foreground: 220 15% 95%;
 
-    --primary: 217 91% 60%;
-    --primary-foreground: 222 47% 6%;
+    --primary: 200 80% 55%;           /* #0EA5E9 azure - vibrant blue */
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 222 47% 14%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 20 90% 55%;          /* #F97316 coral - vibrant warm orange */
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 222 30% 18%;
-    --muted-foreground: 215 20% 65%;
+    --tertiary: 150 65% 50%;          /* #10B981 emerald - vibrant green */
+    --tertiary-foreground: 0 0% 100%;
 
-    --accent: 217 91% 60%;
-    --accent-foreground: 222 47% 6%;
+    --muted: 225 20% 20%;
+    --muted-foreground: 215 15% 65%;
 
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 210 40% 98%;
+    --accent: 200 80% 60%;            /* slightly brighter accent */
+    --accent-foreground: 0 0% 100%;
 
-    --border: 222 30% 18%;
-    --input: 222 30% 18%;
-    --ring: 217 91% 60%;
+    --success: 150 65% 55%;           /* matches tertiary */
+    --success-foreground: 0 0% 100%;
+
+    --warning: 20 90% 55%;            /* matches secondary */
+    --warning-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 225 30% 22%;
+    --input: 225 30% 22%;
+    --ring: 200 80% 60%;
 
     --radius: 0.75rem;
 
-    --sidebar-background: 222 47% 8%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 217 91% 60%;
-    --sidebar-primary-foreground: 222 47% 6%;
-    --sidebar-accent: 222 30% 14%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 222 30% 18%;
-    --sidebar-ring: 217 91% 60%;
+    --sidebar-background: 225 20% 10%;
+    --sidebar-foreground: 220 15% 95%;
+    --sidebar-primary: 200 80% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 20 90% 55%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 225 30% 22%;
+    --sidebar-ring: 200 80% 60%;
 
-    /* Custom tokens */
-    --gradient-primary: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(230 91% 70%) 100%);
-    --gradient-card: linear-gradient(180deg, hsl(222 47% 11%) 0%, hsl(222 47% 8%) 100%);
-    --shadow-glow: 0 0 40px -10px hsl(217 91% 60% / 0.3);
-    --shadow-card: 0 4px 24px -4px hsl(222 47% 4% / 0.5);
+    /* Field colors for the triadic palette */
+    --field-primary: linear-gradient(135deg, hsl(215 25% 60%) 0%, hsl(25 60% 50%) 100%);
+    --field-secondary: linear-gradient(135deg, hsl(25 60% 50%) 0%, hsl(110 30% 55%) 100%);
+    --field-tertiary: linear-gradient(135deg, hsl(110 30% 55%) 0%, hsl(215 25% 60%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(225 40% 15%) 0%, hsl(225 40% 12%) 100%);
+    --shadow-card: 0 4px 12px -2px hsl(0 0% 0% / 0.3);
+    --shadow-glow: none;
+    --backdrop-blur: none;
+
+    /* Color tokens for solid text usage (vibrant palette) */
+    --color-primary: 200 80% 60%;
+    --color-secondary: 20 90% 55%;
+    --color-tertiary: 150 65% 50%;
   }
 
   .dark {
-    --background: 222 47% 6%;
-    --foreground: 210 40% 98%;
+    --background: 225 20% 10%;       /* even deeper for contrast */
+    --foreground: 220 15% 96%;
+
+    --card: 225 20% 13%;
+    --card-foreground: 220 15% 96%;
+
+    --popover: 225 20% 16%;
+    --popover-foreground: 220 15% 96%;
+
+    --primary: 200 80% 60%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 20 90% 55%;
+    --secondary-foreground: 0 0% 100%;
+
+    --tertiary: 150 65% 55%;
+    --tertiary-foreground: 0 0% 100%;
+
+    --muted: 225 20% 18%;
+    --muted-foreground: 215 15% 60%;
+
+    --accent: 200 80% 60%;
+    --accent-foreground: 0 0% 100%;
+
+    --success: 150 65% 55%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 20 90% 55%;
+    --warning-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 225 30% 20%;
+    --input: 225 30% 20%;
+    --ring: 200 80% 60%;
+
+    --sidebar-background: 225 20% 11%;
+    --sidebar-foreground: 220 15% 96%;
+    --sidebar-primary: 200 80% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 20 90% 55%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 225 30% 20%;
+    --sidebar-ring: 200 80% 60%;
+
+    --field-primary: linear-gradient(135deg, hsl(200 80% 65%) 0%, hsl(20 90% 60%) 100%);
+    --field-secondary: linear-gradient(135deg, hsl(20 90% 60%) 0%, hsl(150 65% 55%) 100%);
+    --field-tertiary: linear-gradient(135deg, hsl(150 65% 55%) 0%, hsl(200 80% 65%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(225 20% 13%) 0%, hsl(225 20% 10%) 100%);
+    --shadow-card: 0 4px 12px -2px hsl(0 0% 0% / 0.4);
+    --shadow-glow: none;
+    --backdrop-blur: none;
   }
 }
 
@@ -61,25 +136,59 @@
     @apply border-border;
   }
 
+  .skip-link {
+    position: absolute;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    height: 1px;
+    width: 1px;
+    margin: -1px;
+    overflow: hidden;
+    padding: 0;
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .skip-link:focus {
+    position: static;
+    clip: auto;
+    clip-path: auto;
+    height: auto;
+    width: auto;
+    margin: 0;
+    overflow: visible;
+    top: 0;
+    left: 0;
+    z-index: 1000;
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
+    color-scheme: light dark;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
 
 @layer components {
   .glass-card {
-    @apply bg-card/80 backdrop-blur-xl border border-border/50 rounded-xl;
+    @apply bg-card border border-border rounded-lg;
     box-shadow: var(--shadow-card);
   }
 
   .input-field {
-    @apply bg-secondary/50 border-border/50 focus:border-primary/50 focus:ring-1 focus:ring-primary/30 transition-all duration-200;
+    @apply bg-secondary/10 border-border focus:border-primary focus:ring-1 focus-ring-primary/20 transition-all duration-200;
   }
 
-  .gradient-text {
-    @apply bg-clip-text text-transparent;
-    background-image: var(--gradient-primary);
+  .text-primary-accent {
+    @apply text-primary;
+  }
+
+  .text-secondary-accent {
+    @apply text-secondary;
+  }
+
+  .text-tertiary-accent {
+    @apply text-tertiary;
   }
 
   .glow-effect {

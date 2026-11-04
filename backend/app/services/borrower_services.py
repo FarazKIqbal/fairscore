@@ -9,13 +9,41 @@ import re
 import time
 from uuid import UUID
 
+from app.services.ai_client import (
+    call_ai,
+    AIRequestError,
+    _extract_json_object,
+    _extract_json_array,
+    _is_gemini_access_denied,
+    _is_gemini_rate_limit_error,
+)
+
 
 logger = logging.getLogger(__name__)
 
 
 _INSIGHTS_CACHE_TABLE = "borrower_score_insights_cache"
-_INSIGHTS_CACHE_MEMORY = {}
 _GEMINI_RATE_LIMIT_UNTIL = 0.0
+
+
+def _gemini_rate_limited_now() -> bool:
+    """Check if we're currently in a rate limit backoff period."""
+    return time.time() < _GEMINI_RATE_LIMIT_UNTIL
+
+
+def _set_gemini_rate_limit_backoff(exc: Exception):
+    """Set a rate limit backoff based on the exception."""
+    import re
+    message = str(exc or "")
+    # Try to extract retry-after seconds from error message
+    match = re.search(r"retry[_-]?after[:\s]*(\d+)", message, re.IGNORECASE)
+    if match:
+        seconds = int(match.group(1))
+    else:
+        seconds = 60  # default 60 seconds
+    global _GEMINI_RATE_LIMIT_UNTIL
+    _GEMINI_RATE_LIMIT_UNTIL = time.time() + seconds
+    logger.warning("AI rate limit hit; backing off for %d seconds", seconds)
 
 
 class ExplanationServiceError(Exception):
@@ -174,8 +202,6 @@ def _compute_prediction_fingerprint(prediction_data):
 
 
 def _read_insights_cache(user_id: str):
-    memory_row = _INSIGHTS_CACHE_MEMORY.get(user_id)
-
     try:
         res = supabase.table(_INSIGHTS_CACHE_TABLE) \
             .select("user_id, profile_fingerprint, reasons_payload, advice_payload") \
@@ -184,25 +210,20 @@ def _read_insights_cache(user_id: str):
             .execute()
         records = res.data or []
         if records:
-            record = records[0]
-            _INSIGHTS_CACHE_MEMORY[user_id] = record
-            return record
+            return records[0]
     except Exception as exc:
-        logger.debug("Insights cache table unavailable; using in-memory cache: %s", exc)
+        logger.debug("Insights cache table unavailable: %s", exc)
 
-    return memory_row
+    return None
 
 
 def _write_insights_cache(user_id: str, fingerprint: str, reasons_payload=None, advice_payload=None):
-    existing = _read_insights_cache(user_id) or {}
     row = {
         "user_id": user_id,
         "profile_fingerprint": fingerprint,
-        "reasons_payload": reasons_payload if reasons_payload is not None else existing.get("reasons_payload"),
-        "advice_payload": advice_payload if advice_payload is not None else existing.get("advice_payload"),
+        "reasons_payload": reasons_payload if reasons_payload is not None else {},
+        "advice_payload": advice_payload if advice_payload is not None else {},
     }
-
-    _INSIGHTS_CACHE_MEMORY[user_id] = row
 
     try:
         supabase.table(_INSIGHTS_CACHE_TABLE).upsert(row, on_conflict="user_id").execute()
@@ -211,12 +232,18 @@ def _write_insights_cache(user_id: str, fingerprint: str, reasons_payload=None, 
 
 
 def _is_fallback_payload(payload):
-    return isinstance(payload, dict) and payload.get("source") == "fallback"
+    if not isinstance(payload, dict):
+        return False
+    advice = str(payload.get("advice") or "").strip()
+    return (
+        payload.get("source") == "fallback"
+        or advice.startswith("AI advice unavailable.")
+        or advice.startswith("AI advice is temporarily unavailable.")
+        or advice.startswith("AI advice is temporarily rate-limited.")
+    )
 
 
 def _invalidate_insights_cache(user_id: str):
-    _INSIGHTS_CACHE_MEMORY.pop(user_id, None)
-
     try:
         supabase.table(_INSIGHTS_CACHE_TABLE).delete().eq("user_id", user_id).execute()
     except Exception as exc:
@@ -242,91 +269,6 @@ def _format_feature_label(raw_feature: str) -> str:
     if "<=" in raw_feature or ">=" in raw_feature or "<" in raw_feature or ">" in raw_feature:
         return raw_feature
     return raw_feature.replace("_", " ")
-
-
-def _extract_json_array(text: str):
-    if not isinstance(text, str):
-        return []
-
-    cleaned = text.strip()
-    if not cleaned:
-        return []
-
-    if cleaned.startswith("```"):
-        cleaned = re.sub(r"^```(?:json)?", "", cleaned, flags=re.IGNORECASE).strip()
-        cleaned = re.sub(r"```$", "", cleaned).strip()
-
-    start = cleaned.find("[")
-    end = cleaned.rfind("]")
-    if start == -1 or end == -1 or end <= start:
-        return []
-
-    json_str = cleaned[start:end + 1]
-    try:
-        parsed = json.loads(json_str)
-        return parsed if isinstance(parsed, list) else []
-    except Exception:
-        return []
-
-
-def _extract_json_object(text: str):
-    if not isinstance(text, str):
-        return {}
-
-    cleaned = text.strip()
-    if not cleaned:
-        return {}
-
-    if cleaned.startswith("```"):
-        cleaned = re.sub(r"^```(?:json)?", "", cleaned, flags=re.IGNORECASE).strip()
-        cleaned = re.sub(r"```$", "", cleaned).strip()
-
-    start = cleaned.find("{")
-    end = cleaned.rfind("}")
-    if start == -1 or end == -1 or end <= start:
-        return {}
-
-    json_str = cleaned[start:end + 1]
-    try:
-        parsed = json.loads(json_str)
-        return parsed if isinstance(parsed, dict) else {}
-    except Exception:
-        return {}
-
-
-def _is_gemini_rate_limit_error(exc: Exception) -> bool:
-    message = str(exc or "").lower()
-    return "429" in message and ("quota" in message or "rate limit" in message)
-
-
-def _is_gemini_access_denied(exc: Exception) -> bool:
-    """Check if the error is a 403/access denied from Gemini API."""
-    message = str(exc or "").lower()
-    return "403" in message or "access" in message or "denied" in message or "permission" in message
-
-
-def _extract_retry_delay_seconds(exc: Exception, default_seconds: float = 20.0) -> float:
-    message = str(exc or "")
-
-    match = re.search(r"retry\s+in\s+([0-9]+(?:\.[0-9]+)?)s", message, flags=re.IGNORECASE)
-    if match:
-        return max(float(match.group(1)), 1.0)
-
-    match = re.search(r"retry_delay\s*\{[^}]*seconds\s*:\s*([0-9]+)", message, flags=re.IGNORECASE)
-    if match:
-        return max(float(match.group(1)), 1.0)
-
-    return default_seconds
-
-
-def _set_gemini_rate_limit_backoff(exc: Exception):
-    global _GEMINI_RATE_LIMIT_UNTIL
-    delay = _extract_retry_delay_seconds(exc)
-    _GEMINI_RATE_LIMIT_UNTIL = max(_GEMINI_RATE_LIMIT_UNTIL, time.time() + delay)
-
-
-def _gemini_rate_limited_now() -> bool:
-    return time.time() < _GEMINI_RATE_LIMIT_UNTIL
 
 
 def _fallback_humanize_lime_rule(rule_text: str):
@@ -597,8 +539,10 @@ def _build_combined_score_reasons(shap_factors, lime_rules):
     }
 
 
-def _build_score_reasons_with_gemini(base_reasons_payload, prediction_data, api_key: str):
-    if not api_key or _gemini_rate_limited_now():
+def _build_score_reasons_with_gemini(base_reasons_payload, prediction_data):
+    from app.services.ai_client import AIClient
+    active_provider, _ = AIClient.get_active_provider()
+    if not active_provider or _gemini_rate_limited_now():
         return None
 
     try:
@@ -680,7 +624,7 @@ def _build_score_reasons_with_gemini(base_reasons_payload, prediction_data, api_
         }
     except AIRequestError as exc:
         if _is_gemini_access_denied(exc):
-            logger.warning("AI provider access denied (%s) — ensure API key is valid. Using fallback reasons.", exc.status_code or "unknown")
+            logger.warning("AI provider access denied (%s) — ensure API key is valid. Using fallback reasons.", exc.status_code or exc)
         else:
             logger.warning("AI reason synthesis failed: %s", exc)
         return None
@@ -689,11 +633,16 @@ def _build_score_reasons_with_gemini(base_reasons_payload, prediction_data, api_
         return None
 
 
-def _simplify_lime_rules_with_gemini(rules, prediction_data, api_key: str):
-    if not api_key or not rules or _gemini_rate_limited_now():
+def _simplify_lime_rules_with_gemini(rules, prediction_data):
+    if not rules or _gemini_rate_limited_now():
         return []
 
     try:
+        from app.services.ai_client import AIClient
+        active_provider, _ = AIClient.get_active_provider()
+        if not active_provider:
+            return []
+
         from app.services.ai_client import call_ai, AIRequestError
 
         prompt_payload = []
@@ -747,7 +696,7 @@ def _simplify_lime_rules_with_gemini(rules, prediction_data, api_key: str):
         return normalized
     except AIRequestError as exc:
         if _is_gemini_access_denied(exc):
-            logger.warning("AI provider access denied (%s) — LIME simplification skipped.", exc.status_code or "unknown")
+            logger.warning("AI provider access denied (%s) — LIME simplification skipped.", exc.status_code or exc)
         else:
             logger.warning("AI LIME simplification failed: %s", exc)
         return []
@@ -811,7 +760,7 @@ def _format_shap_response(raw_shap):
     }
 
 
-def _format_lime_response(raw_lime, prediction_data=None, api_key: str = ""):
+def _format_lime_response(raw_lime, prediction_data=None):
     feature_rows = _extract_table_records(raw_lime.get("feature_contributions"))
     rules = []
 
@@ -835,7 +784,7 @@ def _format_lime_response(raw_lime, prediction_data=None, api_key: str = ""):
 
     raw_rules_snapshot = [dict(rule) for rule in rules]
 
-    gemini_rows = _simplify_lime_rules_with_gemini(rules, prediction_data or {}, api_key)
+    gemini_rows = _simplify_lime_rules_with_gemini(rules, prediction_data or {})
     if gemini_rows:
         by_index = {item["index"]: item for item in gemini_rows}
         updated_rules = []
@@ -1037,10 +986,9 @@ def get_score_reasons(user_id: str):
         shap_response = _format_shap_response(raw_shap)
 
         raw_lime = _credit_predictor.explain_prediction_lime(data)
-        api_key = os.getenv("GEMINI_API_KEY", "")
-        # Keep LIME conversion local/fallback to preserve Gemini request budget
+        # Keep LIME conversion local/fallback to preserve AI request budget
         # for reason synthesis and personalized advice generation.
-        lime_response = _format_lime_response(raw_lime, prediction_data=data, api_key="")
+        lime_response = _format_lime_response(raw_lime, prediction_data=data)
         fallback_combined = _build_combined_score_reasons(
             shap_response.get("topFactors", []),
             lime_response.get("rules", []),
@@ -1049,10 +997,9 @@ def get_score_reasons(user_id: str):
         gemini_combined = _build_score_reasons_with_gemini(
             fallback_combined,
             data,
-            api_key,
         )
         combined = gemini_combined or fallback_combined
-        reason_source = "gemini" if gemini_combined else "fallback"
+        reason_source = "ai" if gemini_combined else "fallback"
 
         prediction = _to_float(
             shap_response.get("prediction"),
@@ -1087,8 +1034,7 @@ def get_lime_explanation(user_id: str):
     try:
         data = _get_user_prediction_data(user_id)
         raw_lime = _credit_predictor.explain_prediction_lime(data)
-        api_key = os.getenv("GEMINI_API_KEY", "")
-        return _format_lime_response(raw_lime, prediction_data=data, api_key=api_key)
+        return _format_lime_response(raw_lime, prediction_data=data)
     except ExplanationServiceError:
         raise
     except Exception as exc:
@@ -1104,7 +1050,7 @@ def get_gemini_advice(user_id: str):
             shap_raw = _credit_predictor.explain_prediction_shap(data)
             shap_response = _format_shap_response(shap_raw)
         except Exception as exc:
-            logger.warning("Could not generate SHAP data for Gemini advice: %s", exc)
+            logger.warning("Could not generate SHAP data for AI advice: %s", exc)
             shap_raw = None
             shap_response = {"prediction": 0.0, "topFactors": []}
 
@@ -1112,13 +1058,14 @@ def get_gemini_advice(user_id: str):
             lime_raw = _credit_predictor.explain_prediction_lime(data)
             lime_response = _format_lime_response(lime_raw)
         except Exception as exc:
-            logger.warning("Could not generate LIME data for Gemini fallback advice: %s", exc)
+            logger.warning("Could not generate LIME data for AI fallback advice: %s", exc)
             lime_response = {"prediction": 0.0, "rules": []}
 
-        api_key = os.getenv("GEMINI_API_KEY")
-
-        if not api_key:
-            print("Warning: GEMINI_API_KEY not set, falling back to practical advice tips")
+        # Check if any AI provider is configured
+        from app.services.ai_client import AIClient
+        active_provider, _ = AIClient.get_active_provider()
+        if not active_provider:
+            print("Warning: No AI provider configured (set GEMINI_API_KEY or OPENAI_API_KEY), falling back to practical advice tips")
             tips = _build_fallback_advice(data, shap_response, lime_response)
             return {
                 "prediction": shap_response.get("prediction") or lime_response.get("prediction") or 0.0,
@@ -1140,7 +1087,6 @@ def get_gemini_advice(user_id: str):
             gemini_result = _credit_predictor.get_credit_improvement_advice(
                 data,
                 shap_explanation=shap_raw,
-                api_key=api_key,
             )
 
             prediction_value = _to_float(
@@ -1152,7 +1098,11 @@ def get_gemini_advice(user_id: str):
             return {
                 "prediction": prediction_value,
                 "advice": _normalize_advice_text(gemini_result.get("advice", ""), prediction_value),
-                "source": "gemini",
+                "source": (
+                    active_provider
+                    if not str(gemini_result.get("advice", "")).startswith("AI advice unavailable.")
+                    else "fallback"
+                ),
                 "improvementTips": tips,
             }
         except Exception as exc:
@@ -1467,7 +1417,7 @@ def update_credit_info(data):
 # -----------------------------
 # GET /borrower/lender-info
 # -----------------------------
-def get_lenders():
+def get_lenders(user_id: str):
     res = supabase.table("lender") \
         .select("id, type, loan_amount_from, loan_amount_to, interest") \
         .execute()
@@ -1478,6 +1428,12 @@ def get_lenders():
         return []
     users_res = supabase.table("users").select("id, name").in_("id", lender_ids).execute()
     name_map = {u["id"]: u["name"] for u in users_res.data}
+    loan_res = supabase.table("loan") \
+        .select("lender_id, status") \
+        .eq("borrower_id", user_id) \
+        .in_("status", ["requested", "approved"]) \
+        .execute()
+    applied_lenders = {loan["lender_id"] for loan in loan_res.data}
 
     return [
         {
@@ -1486,7 +1442,8 @@ def get_lenders():
             "type": l["type"],
             "loanAmountFrom": l["loan_amount_from"],
             "loanAmountTo": l["loan_amount_to"],
-            "Interest": l["interest"]
+            "Interest": l["interest"],
+            "applied": l["id"] in applied_lenders
         }
         for l in res.data
     ]
@@ -1496,6 +1453,16 @@ def get_lenders():
 # POST /borrower/apply
 # -----------------------------
 def apply_to_lender(user_id: str, lender_id: str):
+    existing = supabase.table("loan") \
+        .select("id, status") \
+        .eq("borrower_id", user_id) \
+        .eq("lender_id", lender_id) \
+        .in_("status", ["requested", "approved"]) \
+        .limit(1) \
+        .execute()
+    if existing.data:
+        return {"status": existing.data[0]["status"]}
+
     supabase.table("loan").insert({
         "borrower_id": user_id,
         "lender_id": lender_id,

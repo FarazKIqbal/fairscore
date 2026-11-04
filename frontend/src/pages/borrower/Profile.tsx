@@ -425,7 +425,7 @@ const Profile = () => {
                             onClick={handleSavePersonal}
                             disabled={savingSection === 'personal'}
                         >
-                            <Save className="h-4 w-4 mr-1" /> {savingSection === 'personal' ? 'Saving...' : 'Save Changes'}
+                            <Save className="h-4 w-4 mr-1" /> {savingSection === 'personal' ? 'Saving…' : 'Save Changes'}
                         </Button>
                     </CardFooter>
                 )}
@@ -537,7 +537,7 @@ const Profile = () => {
                             onClick={handleSaveEmployment}
                             disabled={savingSection === 'employment'}
                         >
-                            <Save className="h-4 w-4 mr-1" /> {savingSection === 'employment' ? 'Saving...' : 'Save Changes'}
+                            <Save className="h-4 w-4 mr-1" /> {savingSection === 'employment' ? 'Saving…' : 'Save Changes'}
                         </Button>
                     </CardFooter>
                 )}
@@ -653,7 +653,7 @@ const Profile = () => {
                             onClick={handleSaveCredit}
                             disabled={savingSection === 'credit'}
                         >
-                            <Save className="h-4 w-4 mr-1" /> {savingSection === 'credit' ? 'Saving...' : 'Save Changes'}
+                            <Save className="h-4 w-4 mr-1" /> {savingSection === 'credit' ? 'Saving…' : 'Save Changes'}
                         </Button>
                     </CardFooter>
                 )}

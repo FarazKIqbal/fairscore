@@ -174,7 +174,7 @@ const LenderOnboarding = () => {
 
                     <CardFooter>
                         <Button className="w-full" type="submit" disabled={isSubmitting}>
-                            {isSubmitting ? 'Setting up...' : 'Complete Setup'}
+                            {isSubmitting ? 'Setting up…' : 'Complete Setup'}
                         </Button>
                     </CardFooter>
                 </form>

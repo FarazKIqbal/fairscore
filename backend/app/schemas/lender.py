@@ -10,57 +10,41 @@ LenderTypeStr = Literal["individual", "financial_institution"]
 # POST /lender/details
 # -----------------------------
 class LenderDetailsSchema(BaseModel):
-    lenderId: UserIdStr
+    lender_id: UserIdStr = Field(alias="lenderId")
     type: LenderTypeStr
     capacity: float = Field(gt=0)
-    loanAmountFrom: float = Field(gt=0)
-    loanAmountTo: float = Field(gt=0)
+    loan_amount_from: float = Field(gt=0, alias="loanAmountFrom")
+    loan_amount_to: float = Field(gt=0, alias="loanAmountTo")
     interest: float = Field(gt=0, le=100)
 
     @model_validator(mode="after")
     def validate_limits(self):
-        if self.loanAmountFrom >= self.loanAmountTo:
+        if self.loan_amount_from >= self.loan_amount_to:
             raise ValueError('Loan range "From" must be less than "To".')
-        if self.loanAmountTo > self.capacity:
+        if self.loan_amount_to > self.capacity:
             raise ValueError("Maximum loan amount cannot exceed lending capacity.")
         return self
 
-
-class LenderCreateSchema(BaseModel):
-    lenderId: UserIdStr
-    type: LenderTypeStr
-    capacity: float = Field(gt=0)
-    loanAmountFrom: float = Field(gt=0)
-    loanAmountTo: float = Field(gt=0)
-    interest: float = Field(gt=0, le=100)
-
-    @model_validator(mode="after")
-    def validate_limits(self):
-        if self.loanAmountFrom >= self.loanAmountTo:
-            raise ValueError('Loan range "From" must be less than "To".')
-        if self.loanAmountTo > self.capacity:
-            raise ValueError("Maximum loan amount cannot exceed lending capacity.")
-        return self
 
 class LenderDetailsUpdateSchema(BaseModel):
-    lenderID: UserIdStr
+    lender_id: UserIdStr = Field(alias="lenderID")
     capacity: float = Field(gt=0)
-    loanAmountFrom: float = Field(gt=0)
-    loanAmountTo: float = Field(gt=0)
+    loan_amount_from: float = Field(gt=0, alias="loanAmountFrom")
+    loan_amount_to: float = Field(gt=0, alias="loanAmountTo")
     interest: float = Field(gt=0, le=100)
 
     @model_validator(mode="after")
     def validate_limits(self):
-        if self.loanAmountFrom >= self.loanAmountTo:
+        if self.loan_amount_from >= self.loan_amount_to:
             raise ValueError('Loan range "From" must be less than "To".')
-        if self.loanAmountTo > self.capacity:
+        if self.loan_amount_to > self.capacity:
             raise ValueError("Maximum loan amount cannot exceed lending capacity.")
-        return self 
+        return self
 
 class ApproveBorrowerSchema(BaseModel):
-    lenderId: UserIdStr
-    userId: UserIdStr
+    lender_id: UserIdStr = Field(alias="lenderId")
+    user_id: UserIdStr = Field(alias="userId")
 
 class SkipBorrowerSchema(BaseModel):
-    lenderId: UserIdStr
-    userid: UserIdStr
+    lender_id: UserIdStr = Field(alias="lenderId")
+    user_id: UserIdStr = Field(alias="userid")

@@ -59,9 +59,11 @@ export default {
         },
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        DEFAULT: "var(--radius)",
+        sm: "0.25rem",  // 4px - glassmorphism scale
+        md: "0.5rem",   // 8px - glassmorphism scale
+        lg: "0.75rem",
+        xl: "1rem",
       },
       keyframes: {
         "accordion-down": {

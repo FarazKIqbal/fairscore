@@ -1,13 +1,40 @@
 import lightgbm
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from dotenv import load_dotenv
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import os
+from dotenv import load_dotenv
 
 # Load .env from the backend/ directory (one level up from app/)
-if not load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")):
-    print("Warning: .env file not found. Make sure to create one with the necessary environment variables.")
-    
+_env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
+if not load_dotenv(_env_path):
+    print(f"Warning: .env file not found at {_env_path}. Make sure to create one with the necessary environment variables.")
+
+from app.db.supabase import supabase
+from app.services.auth_services import verify_token
+
+# Auth dependency
+security = HTTPBearer(auto_error=False)
+
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Validate the Bearer token and return the user ID."""
+    if not credentials:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    token = credentials.credentials
+    result = verify_token(token)
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    userid, role = result
+    return userid
 
 from app.routes.auth import router as auth_router
 from app.routes.borrower import router as borrower_router

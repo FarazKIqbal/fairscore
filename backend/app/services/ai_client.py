@@ -53,6 +53,18 @@ def _extract_json_array(text: str) -> list:
         return []
 
 
+def _is_gemini_access_denied(exc: Exception) -> bool:
+    """Check if the error is a 403/access denied or 404/not found from AI provider."""
+    message = str(exc or "").lower()
+    return "403" in message or "404" in message or "access" in message or "denied" in message or "permission" in message or "not found" in message
+
+
+def _is_gemini_rate_limit_error(exc: Exception) -> bool:
+    """Check if the error is a 429/rate limit from AI provider."""
+    message = str(exc or "").lower()
+    return "429" in message and ("quota" in message or "rate limit" in message)
+
+
 class AIRequestError(Exception):
     """Raised when the AI API returns an error."""
     def __init__(self, status_code: Optional[int], message: str):
@@ -113,7 +125,7 @@ class AIClient:
         return None, None
 
 
-def _call_gemini(prompt: str, model: str = "gemini-1.5-flash") -> tuple[str, bool]:
+def _call_gemini(prompt: str, model: str = "models/gemini-1.5-flash") -> tuple[str, bool]:
     """Call Google Gemini API. Returns (text, success)."""
     try:
         import google.generativeai as genai
@@ -128,7 +140,9 @@ def _call_gemini(prompt: str, model: str = "gemini-1.5-flash") -> tuple[str, boo
     except AIRequestError:
         raise
     except Exception as exc:
-        raise AIRequestError(None, str(exc))
+        # Extract status code if available
+        status_code = getattr(exc, "status_code", None)
+        raise AIRequestError(status_code, str(exc))
 
 
 def _call_openai(prompt: str, model: str = "gpt-3.5-turbo") -> tuple[str, bool]:
@@ -180,8 +194,8 @@ def call_ai(prompt: str, model: Optional[str] = None, provider: Optional[str] = 
     # Select default model based on provider
     if model is None:
         if active_provider == "gemini":
-            # Allow override via env
-            model = _get_env_var("GEMINI_MODEL", "gemini-1.5-flash")
+            # Allow override via env (default with models/ prefix for v1beta API)
+            model = _get_env_var("GEMINI_MODEL", "models/gemini-1.5-flash")
         else:
             model = _get_env_var("OPENAI_MODEL", "gpt-3.5-turbo")
 

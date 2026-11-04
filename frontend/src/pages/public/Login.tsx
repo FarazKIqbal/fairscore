@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { authService } from '@/services/authService';
@@ -11,7 +12,7 @@ import { authService } from '@/services/authService';
 const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const { login } = useAuth();
+    const { login, isAuthenticated } = useAuth();
     const navigate = useNavigate();
     const [isLoading, setIsLoading] = useState(false);
 
@@ -34,14 +35,19 @@ const Login = () => {
             // Check if user has completed onboarding
             try {
                 const onboardingRes = await authService.checkOnboardingStatus(data.userid, data.role);
-                if (onboardingRes.onboarded) {
-                    navigate(`/${data.role}/dashboard`);
-                } else {
+                if (!onboardingRes.onboarded) {
                     navigate(`/${data.role}/onboarding`);
+                } else {
+                    navigate(`/${data.role}/dashboard`);
                 }
             } catch (error) {
-                // If check fails, redirect to onboarding to be safe
-                navigate(`/${data.role}/onboarding`);
+                // If check fails (e.g., 401 due to expired/missing token), go to login
+                if (!isAuthenticated) {
+                    navigate('/login');
+                } else {
+                    // If authenticated but onboarding check fails, assume not onboarded
+                    navigate(`/${data.role}/onboarding`);
+                }
             }
 
             toast.success(`Welcome back, ${data.name}!`);
@@ -69,7 +75,9 @@ const Login = () => {
                             <Input
                                 id="email"
                                 type="email"
+                                inputMode="email"
                                 placeholder="m@example.com"
+                                autoComplete="email"
                                 required
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
@@ -80,6 +88,8 @@ const Login = () => {
                             <Input
                                 id="password"
                                 type="password"
+                                inputMode="text"
+                                autoComplete="current-password"
                                 required
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
@@ -89,7 +99,7 @@ const Login = () => {
                     </CardContent>
                     <CardFooter className="flex flex-col gap-4">
                         <Button className="w-full" type="submit" disabled={isLoading}>
-                            {isLoading ? "Signing in..." : "Sign In"}
+                            {isLoading ? "Signing in…" : "Sign In"}
                         </Button>
                         <div className="text-center text-sm">
                             Don't have an account? <Link to="/register" className="underline hover:text-primary">Register</Link>

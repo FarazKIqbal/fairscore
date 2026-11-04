@@ -21,7 +21,7 @@ const Register = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (password.length < 7) {
-        toast.error("Password must be at least 7 characters long");
+        toast.error("Password must be at least 7 characters long…");
         return;
     }
         setIsLoading(true);
@@ -69,6 +69,9 @@ const Register = () => {
                             <Label htmlFor="name">Full Name</Label>
                             <Input
                                 id="name"
+                                type="text"
+                                inputMode="text"
+                                autoComplete="name"
                                 placeholder="John Doe"
                                 required
                                 value={name}
@@ -80,6 +83,8 @@ const Register = () => {
                             <Input
                                 id="email"
                                 type="email"
+                                inputMode="email"
+                                autoComplete="email"
                                 placeholder="m@example.com"
                                 required
                                 value={email}
@@ -91,13 +96,15 @@ const Register = () => {
                             <Input
                                 id="password"
                                 type="password"
+                                inputMode="text"
+                                autoComplete="new-password"
                                 required
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label>I want to...</Label>
+                            <Label>I want to…</Label>
                             <RadioGroup defaultValue="borrower" value={role} onValueChange={(v) => setRole(v as 'borrower' | 'lender')}>
                                 <div className="flex items-center space-x-2">
                                     <RadioGroupItem value="borrower" id="borrower" />
@@ -112,7 +119,7 @@ const Register = () => {
                     </CardContent>
                     <CardFooter className="flex flex-col gap-4">
                         <Button className="w-full" type="submit" disabled={isLoading}>
-                            {isLoading ? "Creating account..." : "Create account"}
+                            {isLoading ? "Creating account…" : "Create account"}
                         </Button>
                         <div className="text-center text-sm">
                             Already have an account? <Link to="/login" className="underline hover:text-primary">Login</Link>
