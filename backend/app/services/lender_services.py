@@ -5,6 +5,7 @@ import logging
 import os
 import re
 
+from fastapi import HTTPException, status
 from app.services.borrower_services import get_shap_explanation, get_score_reasons
 from app.services.ai_client import (
     call_ai,
@@ -15,6 +16,21 @@ from app.services.ai_client import (
 
 
 logger = logging.getLogger(__name__)
+
+
+def _verify_lender_borrower_relationship(lender_id: str, borrower_id: str) -> None:
+    relationship = supabase.table("loan") \
+        .select("id") \
+        .eq("lender_id", lender_id) \
+        .eq("borrower_id", borrower_id) \
+        .in_("status", ["requested", "approved"]) \
+        .limit(1) \
+        .execute()
+    if not relationship.data:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access this borrower",
+        )
 
 
 def _fallback_lender_review_advice(borrower_name: str, score: float, risk: str, reasons_payload):
@@ -379,6 +395,8 @@ def get_approved_borrowers(lender_id: str):
 
 
 def get_borrower_review_insights(lender_id: str, borrower_id: str):
+    _verify_lender_borrower_relationship(lender_id, borrower_id)
+
     # Lender snapshot
     lender_row = supabase.table("lender") \
         .select("id, type, capacity, loan_amount_from, loan_amount_to, interest") \

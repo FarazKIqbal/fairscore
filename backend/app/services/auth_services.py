@@ -25,10 +25,24 @@ def verify_password(password: str, hashed: str) -> bool:
 # Simple token utils (DB-only auth without Supabase Auth)
 # -----------------------------
 _TOKEN_SECRET = os.environ.get("TOKEN_SECRET")
-if not _TOKEN_SECRET:
-    raise RuntimeError(
-        "TOKEN_SECRET environment variable is required. Set it in .env or export it."
-    )
+_WEAK_TOKEN_SECRETS = {
+    "",
+    "dev-secret-change-me",
+    "change-me",
+    "changeme",
+    "secret",
+}
+
+
+def _validate_token_secret(secret: str | None) -> str:
+    if not secret or secret.strip().lower() in _WEAK_TOKEN_SECRETS or len(secret) < 32:
+        raise RuntimeError(
+            "TOKEN_SECRET must be a random secret of at least 32 characters."
+        )
+    return secret
+
+
+_TOKEN_SECRET = _validate_token_secret(_TOKEN_SECRET)
 _TOKEN_TTL_HOURS = 24
 
 def _b64url_encode(data: bytes) -> str:

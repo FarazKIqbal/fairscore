@@ -1,0 +1,23 @@
+name: Backend security tests
+
+on:
+  push:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-security-tests.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-security-tests.yml"
+
+jobs:
+  security-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r backend/requirements.txt -r backend/requirements-dev.txt
+      - run: coverage run -m unittest discover -s backend/tests -v
+      - run: coverage report
