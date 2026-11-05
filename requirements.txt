@@ -1,5 +1,5 @@
 lightgbm
 torch
-shap
+shap==0.50.0
 lime
 google-generativeai
