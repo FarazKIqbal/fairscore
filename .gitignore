@@ -38,6 +38,7 @@ lerna-debug.log*
 # ML artifacts
 *.pkl
 *.joblib
+fairscore-models.zip
 
 # Datasets
 backend/dataset/
