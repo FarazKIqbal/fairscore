@@ -25,16 +25,14 @@ RUN useradd --create-home --shell /bin/bash appuser
 WORKDIR /app
 
 # Install Python dependencies (use layer caching)
-COPY requirements.txt backend/requirements.txt ./
+COPY backend/requirements.txt ./requirements.txt
 RUN python -m venv /opt/venv && \
     /opt/venv/bin/pip install --no-cache-dir --upgrade pip && \
-    /opt/venv/bin/pip install --no-cache-dir -r requirements.txt && \
-    /opt/venv/bin/pip install --no-cache-dir -r backend/requirements.txt
+    /opt/venv/bin/pip install --no-cache-dir -r requirements.txt
 
 # Copy backend source after deps installed (better cache invalidation)
 COPY backend/ ./backend/
 COPY scripts/ ./scripts/
-COPY requirements.txt ./
 
 # Copy built frontend assets from builder stage
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
