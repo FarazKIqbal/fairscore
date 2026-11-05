@@ -11,6 +11,8 @@ import Layout from "./components/layout/Layout";
 import Landing from "./pages/public/Landing";
 import Login from "./pages/public/Login";
 import Register from "./pages/public/Register";
+import PrivacyPolicy from "./pages/public/PrivacyPolicy";
+import Terms from "./pages/public/Terms";
 import NotFound from "./pages/NotFound";
 
 // Borrower Pages
@@ -41,6 +43,8 @@ const App = () => (
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/terms" element={<Terms />} />
 
             {/* Borrower Routes */}
             <Route element={<ProtectedRoute allowedRoles={['borrower']} />}>

@@ -302,21 +302,48 @@ const Landing = () => {
             {/* Footer */}
             <footer className="border-t py-12 bg-muted/20">
                 <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-                        <div className="flex items-center gap-2">
-                            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
-                                <span className="font-bold text-primary-foreground text-xs">FS</span>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-8 text-sm text-muted-foreground">
+                        {/* Company */}
+                        <div>
+                            <div className="flex items-center gap-2 mb-4">
+                                <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
+                                    <span className="font-bold text-primary-foreground text-xs">FS</span>
+                                </div>
+                                <span className="font-bold">FairScore</span>
                             </div>
-                            <span className="font-bold">FairScore</span>
+                            <p className="text-xs text-muted-foreground/70">
+                                Fair Loan Eligibility Assessment Platform
+                            </p>
                         </div>
-                        <div className="flex gap-8 text-sm text-muted-foreground">
-                            <a href="#features" className="hover:text-foreground transition-colors">Features</a>
-                            <a href="#how-it-works" className="hover:text-foreground transition-colors">How It Works</a>
-                            <a href="#who" className="hover:text-foreground transition-colors">Who It's For</a>
+
+                        {/* Product Links */}
+                        <div>
+                            <h4 className="font-semibold text-foreground mb-3">Product</h4>
+                            <ul className="space-y-2">
+                                <li><a href="#features" className="hover:text-foreground transition-colors">Features</a></li>
+                                <li><a href="#how-it-works" className="hover:text-foreground transition-colors">How It Works</a></li>
+                                <li><a href="#who" className="hover:text-foreground transition-colors">Who It's For</a></li>
+                            </ul>
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                            &copy; {new Date().getFullYear()} FairScore. All rights reserved.
-                        </p>
+
+                        {/* Legal */}
+                        <div>
+                            <h4 className="font-semibold text-foreground mb-3">Legal</h4>
+                            <ul className="space-y-2">
+                                <li><a href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</a></li>
+                                <li><a href="/terms" className="hover:text-foreground transition-colors">Terms of Service</a></li>
+                            </ul>
+                        </div>
+
+                        {/* Copyright */}
+                        <div className="md:col-span-1">
+                            <p className="text-xs text-muted-foreground/70">
+                                &copy; {new Date().getFullYear()} FairScore. All rights reserved.
+                            </p>
+                            <p className="text-xs text-muted-foreground/50 mt-4">
+                                FairScore Financial Technologies Pvt. Ltd., India
+                            </p>
+                        </div>
                     </div>
                 </div>
             </footer>

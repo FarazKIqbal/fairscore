@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%">
+      <stop offset="0%" style="stop-color:#0EA5E9"/>
+      <stop offset="100%" style="stop-color:#F97316"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="#0F172A"/>
+  <rect x="60" y="60" width="1080" height="510" rx="24" fill="white" fill-opacity="0.08"/>
+  <text x="130" y="150" font-family="Inter, sans-serif" font-size="72" font-weight="800" fill="white">FairScore</text>
+  <text x="130" y="220" font-family="Inter, sans-serif" font-size="36" fill="#CBD5E1">Fair Loan Eligibility Assessment</text>
+  <text x="130" y="270" font-family="Inter, sans-serif" font-size="20" fill="#94A3B8">AI-powered transparent credit scoring</text>
+  <rect x="880" y="100" width="240" height="140" rx="16" fill="url(#gradient)">
+    <circle cx="1000" cy="170" r="50" fill="white" fill-opacity="0.2"/>
+    <text x="1000" y="178" font-family="Inter, sans-serif" font-size="32" font-weight="700" fill="white" text-anchor="middle">₹50K+</text>
+    <text x="1000" y="215" font-family="Inter, sans-serif" font-size="16" fill="#E2E8F0" text-anchor="middle">Loans Facilitated</text>
+  </rect>
+</svg>
