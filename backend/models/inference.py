@@ -8,12 +8,8 @@ import numpy as np
 import joblib
 import os
 from pathlib import Path
-import torch
-import torch.nn as nn
-from sklearn.preprocessing import LabelEncoder
-import shap
-import lime
-import lime.lime_tabular
+# shap and lime are imported lazily inside their explain_* methods: they cost ~45MB of
+# RSS and are only needed on the explanation endpoints.
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -161,75 +157,9 @@ class SafePredictorWrapper:
 # Stacked Ensemble Predictor
 # ============================================================================
 
-class TabTransformer(nn.Module):
-    """TabTransformer model architecture for loading trained PyTorch model."""
-    
-    def __init__(self, num_features, cat_dims, cat_idxs, num_idxs, embed_dim=32, num_heads=4, num_layers=2, mlp_hidden=128, dropout=0.1):
-        super(TabTransformer, self).__init__()
-        self.cat_idxs = cat_idxs
-        self.num_idxs = num_idxs
-        
-        # Embeddings for categorical features
-        self.cat_embeddings = nn.ModuleList([
-            nn.Embedding(dim + 1, embed_dim) for dim in cat_dims
-        ])
-        
-        # Transformer for categorical embeddings
-        encoder_layer = nn.TransformerEncoderLayer(
-            d_model=embed_dim,
-            nhead=num_heads,
-            dim_feedforward=embed_dim * 4,
-            dropout=dropout,
-            batch_first=True
-        )
-        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
-        
-        # Calculate input dimension for MLP
-        total_dim = len(cat_idxs) * embed_dim + len(num_idxs)
-        
-        self.mlp = nn.Sequential(
-            nn.Linear(total_dim, mlp_hidden),
-            nn.ReLU(),
-            nn.Dropout(dropout),
-            nn.Linear(mlp_hidden, mlp_hidden // 2),
-            nn.ReLU(),
-            nn.Dropout(dropout),
-            nn.Linear(mlp_hidden // 2, 1)
-        )
-    
-    def forward(self, x):
-        # Process categorical features through Transformer
-        if len(self.cat_idxs) > 0:
-            cat_embeds = []
-            for i, idx in enumerate(self.cat_idxs):
-                cat_embeds.append(self.cat_embeddings[i](x[:, idx].long()))
-            
-            cat_embeds = torch.stack(cat_embeds, dim=1)
-            cat_transformed = self.transformer(cat_embeds)
-            cat_part = cat_transformed.flatten(start_dim=1)
-        
-        # Process numerical features
-        if len(self.num_idxs) > 0:
-            num_features = x[:, self.num_idxs]
-        else:
-            num_features = None
-        
-        # Combine
-        if len(self.cat_idxs) > 0 and len(self.num_idxs) > 0:
-            combined = torch.cat([cat_part, num_features], dim=1)
-        elif len(self.cat_idxs) > 0:
-            combined = cat_part
-        else:
-            combined = num_features
-            
-        output = self.mlp(combined)
-        return output.squeeze()
-
-
 class StackedEnsemblePredictor:
     """
-    Stacked ensemble predictor combining Random Forest, LightGBM, and TabTransformer
-    with a Linear Regression meta-learner.
+    Stacked ensemble predictor combining Random Forest and LightGBM with a Linear Regression meta-learner.
     """
     
     def __init__(self, models_dir=None):
@@ -249,7 +179,6 @@ class StackedEnsemblePredictor:
         # Define paths
         self.rf_path = os.path.join(models_dir, 'random_forest_model.joblib')
         self.lgbm_path = os.path.join(models_dir, 'lightgbm_model.joblib')
-        self.transformer_path = os.path.join(models_dir, 'tab_transformer_model.pth')
         self.meta_learner_path = os.path.join(models_dir, 'meta_learner.joblib')
         self.encoders_path = os.path.join(models_dir, 'label_encoders.joblib')
         self.scaler_path = os.path.join(models_dir, 'scaler.joblib')
@@ -267,7 +196,6 @@ class StackedEnsemblePredictor:
         required_files = {
             'Random Forest': self.rf_path,
             'LightGBM': self.lgbm_path,
-            'TabTransformer': self.transformer_path,
             'Meta-Learner': self.meta_learner_path,
             'Label Encoders': self.encoders_path,
             'Scaler': self.scaler_path
@@ -282,8 +210,7 @@ class StackedEnsemblePredictor:
                 f"  1. Run preprocessing.py\n"
                 f"  2. Run random_forest.py\n"
                 f"  3. Run lightgbm_model.py\n"
-                f"  4. Run tab_transformer.py\n"
-                f"  5. Run stacked_ensemble.py"
+                f"  4. Run stacked_ensemble.py"
             )
         
         # Load preprocessing components
@@ -302,10 +229,6 @@ class StackedEnsemblePredictor:
         self.lgbm_model = joblib.load(self.lgbm_path)
         print(f"  [OK] LightGBM loaded")
         
-        # Load TabTransformer
-        self._load_transformer()
-        print(f"  [OK] TabTransformer loaded (device: {self.device})")
-        
         # Load meta-learner
         self.meta_learner = joblib.load(self.meta_learner_path)
         print(f"  [OK] Meta-learner (Linear Regression) loaded")
@@ -314,58 +237,9 @@ class StackedEnsemblePredictor:
         print("[OK] ALL ENSEMBLE MODELS LOADED SUCCESSFULLY")
         print("=" * 60)
         
-    def _load_transformer(self):
-        """Load TabTransformer model."""
-        # Need to load original dataset to get categorical dimensions
-        project_dir = os.path.dirname(self.models_dir)
-        original_path = os.path.join(project_dir, 'dataset', 'credit_data.csv')
-        
-        if not os.path.exists(original_path):
-            raise FileNotFoundError(f"Original dataset not found: {original_path}")
-        
-        df_original = pd.read_csv(original_path)
-        feature_columns = ['Age', 'Income', 'Credit History Length', 'Number of Existing Loans', 
-                          'Existing Customer', 'State', 'City', 'LTV Ratio', 
-                          'Employment Profile', 'Occupation']
-        X_original = df_original[feature_columns]
-        
-        # Get categorical and numerical columns
-        categorical_cols = X_original.select_dtypes(include=['object']).columns.tolist()
-        numerical_cols = X_original.select_dtypes(include=['int64', 'float64']).columns.tolist()
-        
-        # Encode to get dimensions
-        X_temp = X_original.copy()
-        for col in categorical_cols:
-            le = LabelEncoder()
-            X_temp[col] = le.fit_transform(X_temp[col].astype(str))
-        
-        # Get dimensions for transformer
-        self.cat_dims = [X_temp[col].nunique() for col in categorical_cols]
-        self.cat_idxs = [X_temp.columns.tolist().index(col) for col in categorical_cols]
-        self.num_idxs = [X_temp.columns.tolist().index(col) for col in numerical_cols]
-        
-        # Initialize model
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.transformer_model = TabTransformer(
-            num_features=X_temp.shape[1],
-            cat_dims=self.cat_dims,
-            cat_idxs=self.cat_idxs,
-            num_idxs=self.num_idxs,
-            embed_dim=32,
-            num_heads=4,
-            num_layers=2,
-            mlp_hidden=128,
-            dropout=0.1
-        ).to(self.device)
-        
-        # Load weights
-        self.transformer_model.load_state_dict(torch.load(self.transformer_path, map_location=self.device))
-        self.transformer_model.eval()
-    
     def preprocess_data(self, df):
         """
         Preprocess input data (encoding and scaling).
-        Returns both scaled and encoded-only versions.
         
         Parameters:
         -----------
@@ -374,9 +248,7 @@ class StackedEnsemblePredictor:
         
         Returns:
         --------
-        tuple : (df_scaled, df_encoded_only)
-            - df_scaled: For RF and LightGBM
-            - df_encoded_only: For TabTransformer
+        pandas.DataFrame : Scaled data ready for RF and LightGBM
         """
         df_encoded = df.copy()
         
@@ -403,16 +275,13 @@ class StackedEnsemblePredictor:
                 num_unknown = unknown_mask.sum()
                 print(f"[WARN] Warning: {num_unknown} unknown values in '{col}' - encoded as -1")
         
-        # Keep encoded-only version for TabTransformer
-        df_encoded_only = df_encoded.copy()
-        
         # Scale features for RF and LightGBM
         df_scaled = self.scaler.transform(df_encoded)
         df_scaled = pd.DataFrame(df_scaled, columns=df_encoded.columns, index=df_encoded.index)
         
-        return df_scaled, df_encoded_only
+        return df_scaled
     
-    def _get_base_predictions(self, df_scaled, df_encoded):
+    def _get_base_predictions(self, df_scaled):
         """
         Get predictions from all base models.
         
@@ -420,9 +289,6 @@ class StackedEnsemblePredictor:
         -----------
         df_scaled : pandas.DataFrame
             Scaled data for RF and LightGBM
-        df_encoded : pandas.DataFrame
-            Encoded (not scaled) data for TabTransformer
-        
         Returns:
         --------
         numpy.ndarray : Stacked predictions from base models (shape: n_samples x 3)
@@ -439,24 +305,9 @@ class StackedEnsemblePredictor:
         # LightGBM predictions (uses scaled data)
         lgbm_pred = self.lgbm_model.predict(df_scaled_safe)
         
-        # TabTransformer predictions (uses encoded but not scaled data)
-        # Replace -1 (unknown values) with the last valid embedding index (dim - 1)
-        df_encoded_safe = df_encoded.copy()
-        for i, col in enumerate(df_encoded.columns):
-            # Ensure column is numeric first
-            if df_encoded_safe[col].dtype == 'object':
-                df_encoded_safe[col] = pd.to_numeric(df_encoded_safe[col], errors='coerce').fillna(-1)
-            
-            if col in self.categorical_cols:
-                # Find the categorical index
-                cat_col_idx = list(self.categorical_cols).index(col)
-                max_valid_idx = self.cat_dims[cat_col_idx]  # The embedding size is dim + 1, so max valid is dim
-                # Replace -1 with max_valid_idx (the last embedding, which we'll treat as "unknown")
-                df_encoded_safe.loc[df_encoded_safe[col] < 0, col] = max_valid_idx
-        
-        with torch.no_grad():
-            X_tensor = torch.FloatTensor(df_encoded_safe.values).to(self.device)
-            transformer_pred = self.transformer_model(X_tensor).cpu().numpy()
+        # The transformer column stays at 0: torch cost 154MB of RSS for a model the
+        # meta-learner weighted at 0.000727, worth well under one point of score.
+        transformer_pred = np.zeros(len(df_scaled_safe))
         
         # Stack predictions
         base_predictions = np.column_stack([rf_pred, lgbm_pred, transformer_pred])
@@ -478,12 +329,12 @@ class StackedEnsemblePredictor:
         """
         print(f"\n[CHART] Processing {len(df)} samples with Stacked Ensemble...")
         
-        # Preprocess (returns both scaled and encoded versions)
-        df_scaled, df_encoded = self.preprocess_data(df)
+        # Preprocess
+        df_scaled = self.preprocess_data(df)
         
         # Get base model predictions
         print("  - Getting predictions from base models...")
-        base_predictions = self._get_base_predictions(df_scaled, df_encoded)
+        base_predictions = self._get_base_predictions(df_scaled)
         
         # Get final prediction from meta-learner
         print("  - Combining with meta-learner...")
@@ -505,11 +356,11 @@ class StackedEnsemblePredictor:
         --------
         dict : Dictionary containing predictions from each model and the ensemble
         """
-        # Preprocess (returns both scaled and encoded versions)
-        df_scaled, df_encoded = self.preprocess_data(df)
+        # Preprocess
+        df_scaled = self.preprocess_data(df)
         
         # Get base model predictions
-        base_predictions = self._get_base_predictions(df_scaled, df_encoded)
+        base_predictions = self._get_base_predictions(df_scaled)
         
         # Get ensemble prediction
         ensemble_predictions = self.meta_learner.predict(base_predictions)
@@ -587,8 +438,8 @@ class StackedEnsemblePredictor:
         print("="*60)
         
         # Get base model predictions
-        df_scaled, df_encoded = self.preprocess_data(df)
-        base_predictions = self._get_base_predictions(df_scaled, df_encoded)
+        df_scaled = self.preprocess_data(df)
+        base_predictions = self._get_base_predictions(df_scaled)
         
         # Get ensemble prediction
         ensemble_pred = self.meta_learner.predict(base_predictions)
@@ -722,7 +573,7 @@ class StackedEnsemblePredictor:
         # LIME needs numeric data to compute quartiles
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            X_train_scaled, X_train_encoded = self.preprocess_data(X_train)
+            X_train_scaled = self.preprocess_data(X_train)
         
         # Identify categorical features by index
         categorical_features = [i for i, col in enumerate(X_sample.columns) 
@@ -748,7 +599,7 @@ class StackedEnsemblePredictor:
         # Preprocess the sample for LIME
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            X_sample_scaled, X_sample_encoded = self.preprocess_data(X_sample)
+            X_sample_scaled = self.preprocess_data(X_sample)
         
         # Generate explanation
         lime_exp = lime_explainer.explain_instance(
@@ -783,16 +634,10 @@ class StackedEnsemblePredictor:
         # Create DataFrame from preprocessed data
         df_scaled = pd.DataFrame(X_preprocessed, columns=self.feature_columns)
         
-        # For TabTransformer, we need the encoded-only version
-        # Since we have scaled data, we need to inverse transform and re-encode
-        # For simplicity with LIME, we'll use a unified approach
-        
-        # Get both versions needed
-        df_encoded = df_scaled.copy()  # For TabTransformer (will be adjusted in _get_base_predictions)
         
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            base_predictions = self._get_base_predictions(df_scaled, df_encoded)
+            base_predictions = self._get_base_predictions(df_scaled)
             ensemble_predictions = self.meta_learner.predict(base_predictions)
         
         return ensemble_predictions

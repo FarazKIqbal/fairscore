@@ -18,7 +18,6 @@ REQUIRED_FILES = (
     "meta_learner.joblib",
     "label_encoders.joblib",
     "scaler.joblib",
-    "tab_transformer_model.pth",
 )
 
 

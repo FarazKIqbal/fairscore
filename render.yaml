@@ -3,6 +3,7 @@ services:
     name: fairscore-backend
     env: python
     runtime: python
+    plan: free
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
@@ -11,6 +12,12 @@ services:
       - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
       - key: TOKEN_SECRET
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: MODEL_RELEASE_URL
+        sync: false
+      - key: MODEL_GITHUB_TOKEN
         sync: false
     buildCommand: pip install -r backend/requirements.txt && python scripts/download_models.py
     startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT

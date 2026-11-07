@@ -10,7 +10,6 @@ bcrypt==5.0.0
 supabase==2.28.3
 
 # ML Model dependencies (runtime for prediction API)
-torch==2.11.0
 lightgbm==4.6.0
 scikit-learn==1.8.0
 pandas==3.0.0

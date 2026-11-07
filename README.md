@@ -149,6 +149,8 @@ python backend/models/stacked_ensemble.py   # linear meta-learner
 
 Or let the launcher handle it: `python scripts/bootstrap_and_run.py --train-missing-models`.
 
+The training pipeline still fits the TabTransformer, but the serving path does not: inference fills its meta-learner column with `0.0` so the runtime never imports PyTorch (154 MB of RSS). Its trained coefficient is `0.0007`, worth under a point of score.
+
 ### Measured performance
 
 | Model | R² | MAE | RMSE |
